@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>داشبورد بورس</title>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #21262d;
+
+      --green-hi:     #4caf50;
+      --green-hi-bg:  rgba(76,175,80,0.20);
+      --green-hi-bdr: #2e7d32;
+
+      --green-md:     #388e3c;
+      --green-md-bg:  rgba(56,142,60,0.20);
+      --green-md-bdr: #2e7d32;
+
+      --green-lo:     #1b5e20;
+      --green-lo-bg:  rgba(27,94,32,0.22);
+      --green-lo-bdr: #1b5e20;
+
+      --red-hi:     #f44336;
+      --red-hi-bg:  rgba(244,67,54,0.20);
+      --red-hi-bdr: #c62828;
+
+      --red-md:     #d32f2f;
+      --red-md-bg:  rgba(211,47,47,0.20);
+      --red-md-bdr: #b71c1c;
+
+      --red-lo:     #b71c1c;
+      --red-lo-bg:  rgba(183,28,28,0.22);
+      --red-lo-bdr: #8b0000;
+
+      --zero:      #607d8b;
+      --yellow:    #e3b341;
+      --text:      #e6edf3;
+      --muted:     #7d8590;
+      --card-hover:#1c2128;
+      --radius:    12px;
+
+      font-size: 110%;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Vazirmatn', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      direction: rtl;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      row-gap: 10px;
+      overflow: hidden;
+    }
+
+    /* ۸. هایلایت سوییچ توکن */
+    header::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 50%, rgba(76,175,80,0.35) 0%, transparent 70%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.1s;
+    }
+    header.token-flash::after {
+      animation: headerFlash 0.8s ease-out forwards;
+    }
+    @keyframes headerFlash {
+      0%   { opacity: 0; }
+      20%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--green-hi); }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+
+    /* ۶. دکمه رفرش با اسپین */
+    #refresh-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.8rem;
+      transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #refresh-btn:hover { background: var(--card-hover); }
+    #refresh-btn .btn-icon {
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+    #refresh-btn.loading .btn-icon {
+      animation: spinBtn 0.7s linear infinite;
+    }
+    @keyframes spinBtn { to { transform: rotate(360deg); } }
+
+    /* ─── PAUSE / RESUME ─── */
+    #pause-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.8rem;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #pause-btn:hover { background: var(--card-hover); }
+    #pause-btn.paused {
+      background: rgba(227,179,65,0.15);
+      border-color: var(--yellow);
+      color: var(--yellow);
+    }
+    #pause-btn.paused:hover { background: rgba(227,179,65,0.25); }
+    .pause-icon { font-style: normal; font-size: 0.85rem; }
+
+    /* ─── TOKEN SWITCH ─── */
+    .token-switch {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .token-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 7px 14px;
+      font-family: inherit;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    .token-btn + .token-btn { border-right: 1px solid var(--border); }
+    .token-btn:hover:not(.active) { background: var(--card-hover); }
+    .token-btn.active {
+      background: var(--green-hi);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    /* ─── INTERVAL CONTROL ─── */
+    .interval-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 6px 4px 12px;
+    }
+    .interval-control label {
+      font-size: 0.74rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .interval-control input {
+      width: 52px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.8rem;
+      text-align: center;
+      padding: 4px 2px;
+    }
+    .interval-control input:focus { outline: 1px solid var(--green-hi); }
+    .interval-control button {
+      background: var(--border);
+      border: none;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.76rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .interval-control button:hover { background: var(--card-hover); }
+
+    /* ۵. شمارش معکوس رینگ دایره‌ای */
+    #countdown-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #countdown-ring {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+    #countdown-ring-track {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 3;
+    }
+    #countdown-ring-fill {
+      fill: none;
+      stroke: var(--yellow);
+      stroke-width: 3;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: 16px 16px;
+      transition: stroke-dashoffset 1s linear, stroke 0.5s;
+    }
+    #countdown-text {
+      font-size: 0.78rem;
+      color: var(--yellow);
+      font-weight: 700;
+      min-width: 52px;
+    }
+
+    /* ─── SUMMARY BAR ─── */
+    #summary-bar {
+      display: flex;
+      gap: 14px;
+      padding: 16px 28px;
+      flex-wrap: wrap;
+    }
+
+    .summary-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .summary-chip strong { color: var(--text); font-weight: 700; }
+
+    /* ─── GRID ─── */
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 16px;
+      padding: 0 28px 40px;
+    }
+
+    /* ─── CARD ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .card.hidden { display: none; }
+
+    /* ۱. ورود تدریجی کارت‌ها */
+    .card.card-enter {
+      animation: cardFadeIn 0.4s ease both;
+    }
+    @keyframes cardFadeIn {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ۷. انیمیشن مخفی شدن کارت */
+    .card.card-hiding {
+      animation: cardHide 0.35s ease forwards;
+      pointer-events: none;
+    }
+    @keyframes cardHide {
+      0%   { opacity: 1; transform: scale(1) rotate(0deg); }
+      40%  { opacity: 0.6; transform: scale(0.95) rotate(-1deg); }
+      100% { opacity: 0; transform: scale(0.85) rotate(-2deg); }
+    }
+
+    /* ۹. گرادینت متحرک پس‌زمینه کارت‌های داغ */
+    .card.hot-pos::before,
+    .card.hot-neg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      pointer-events: none;
+      z-index: 0;
+      animation: breathe 3s ease-in-out infinite;
+    }
+    .card.hot-pos::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(76,175,80,0.13) 0%, transparent 70%);
+    }
+    .card.hot-neg::before {
+      background: radial-gradient(ellipse at 50% 0%, rgba(244,67,54,0.13) 0%, transparent 70%);
+    }
+    @keyframes breathe {
+      0%, 100% { opacity: 0.5; }
+      50%       { opacity: 1; }
+    }
+    /* همه فرزندان کارت داغ باید روی z-index بالاتر باشن */
+    .card.hot-pos > *, .card.hot-neg > * { position: relative; z-index: 1; }
+
+    .card-header {
+      padding: 14px 16px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+    }
+
+    .group-name {
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .count-badge {
+      background: var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .hide-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .hide-btn:hover { background: var(--red-hi-bg); color: var(--red-hi); border-color: var(--red-hi-bdr); }
+
+    /* avg row */
+    .avg-row {
+      display: flex;
+      gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .avg-chip {
+      flex: 1;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 0.78rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .avg-chip.pos {
+      background: var(--green-hi-bg);
+      border: 1px solid var(--green-hi-bdr);
+    }
+    .avg-chip.neg {
+      background: var(--red-hi-bg);
+      border: 1px solid var(--red-hi-bdr);
+    }
+    .avg-label { color: var(--muted); font-size: 0.68rem; }
+    .avg-val { font-weight: 700; font-size: 0.95rem; }
+    .avg-chip.pos .avg-val { color: var(--green-hi); }
+    .avg-chip.neg .avg-val { color: var(--red-hi); }
+
+    /* ─── TREND CHART ─── */
+    .trend-section {
+      padding: 10px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .trend-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .trend-title { font-size: 0.68rem; color: var(--muted); }
+    .trend-value { font-size: 0.85rem; font-weight: 700; }
+    .trend-value.pos  { color: var(--green-hi); }
+    .trend-value.neg  { color: var(--red-hi); }
+    .trend-value.zero { color: var(--zero); }
+
+    .trend-chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 46px;
+    }
+    .trend-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible;
+    }
+    .trend-empty {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-align: center;
+      padding: 14px 0;
+    }
+
+    /* ۴. انیمیشن رسم خط نمودار */
+    .trend-line-anim {
+      stroke-dasharray: 2000;
+      stroke-dashoffset: 2000;
+      animation: drawLine 0.9s ease forwards;
+    }
+    @keyframes drawLine {
+      to { stroke-dashoffset: 0; }
+    }
+
+    /* symbol sections */
+    .sym-section { padding: 10px 16px; }
+    .sym-section + .sym-section { border-top: 1px solid var(--border); }
+
+    .sym-section-title {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .sym-section-title .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .dot-green { background: var(--green-hi); }
+    .dot-red   { background: var(--red-hi); }
+
+    .sym-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .sym-tag {
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .sym-tag.g-hi  { background: var(--green-hi);  color: #fff; }
+    .sym-tag.g-md  { background: var(--green-md);  color: #fff; }
+    .sym-tag.g-lo  { background: var(--green-lo);  color: #fff; }
+    .sym-tag.r-hi  { background: var(--red-hi);    color: #fff; }
+    .sym-tag.r-md  { background: var(--red-md);    color: #fff; }
+    .sym-tag.r-lo  { background: var(--red-lo);    color: #fff; }
+
+    .sym-pct {
+      font-weight: 400;
+      font-size: 0.74rem;
+      opacity: 0.92;
+    }
+
+    /* ۲. پالس روی بج‌های تغییر‌یافته */
+    @keyframes tagPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.5); }
+      50%  { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    }
+    .sym-tag.changed {
+      animation: tagPulse 0.7s ease;
+    }
+
+    /* ─── SKELETON LOADING (۱۰) ─── */
+    #skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 16px;
+      padding: 0 28px 40px;
+    }
+    .skeleton-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      padding: 16px;
+    }
+    .sk-line {
+      border-radius: 6px;
+      background: linear-gradient(90deg, var(--border) 25%, #2d333b 50%, var(--border) 75%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+
+    /* ─── LOADER (اصلی، برای حالت بدون skeleton) ─── */
+    #loader {
+      display: none; /* skeleton جایگزین میشه */
+    }
+
+    #error-msg {
+      display: none;
+      text-align: center;
+      padding: 60px;
+      color: var(--red-hi);
+    }
+
+    /* ─── FLASH ─── */
+    #flash {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--green-hi-bg);
+      border: 1px solid var(--green-hi);
+      color: var(--green-hi);
+      padding: 9px 22px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    #flash.show { opacity: 1; }
+    #flash.flash-error {
+      background: var(--red-hi-bg);
+      border-color: var(--red-hi);
+      color: var(--red-hi);
+    }
+  </style>
+</head>
+<body>
+
+<header id="main-header">
+  <div class="logo">داشبورد <span>بورس</span></div>
+  <div class="header-meta">
+    <span id="last-update">—</span>
+
+    <div class="token-switch" id="token-switch">
+      <button class="token-btn" data-key="1" onclick="switchToken(1)">توکن ۱</button>
+      <button class="token-btn" data-key="2" onclick="switchToken(2)">توکن ۲</button>
+    </div>
+
+    <div class="interval-control">
+      <label for="interval-input">بازه‌ی رفرش:</label>
+      <input type="number" id="interval-input" min="5" step="5" />
+      <button onclick="applyInterval()">تنظیم</button>
+    </div>
+
+    <!-- ۵. رینگ شمارش معکوس -->
+    <div id="countdown-wrap">
+      <svg id="countdown-ring" viewBox="0 0 32 32">
+        <circle id="countdown-ring-track" cx="16" cy="16" r="13"/>
+        <circle id="countdown-ring-fill"  cx="16" cy="16" r="13"/>
+      </svg>
+      <span id="countdown-text">—</span>
+    </div>
+
+    <!-- دکمه پاز/ادامه -->
+    <button id="pause-btn" onclick="togglePause()">
+      <span class="pause-icon">⏸</span> <span id="pause-label">توقف</span>
+    </button>
+
+    <!-- ۶. دکمه رفرش با اسپین -->
+    <button id="refresh-btn" onclick="loadData()">
+      <span class="btn-icon">↻</span> بروزرسانی
+    </button>
+  </div>
+</header>
+
+<div id="summary-bar"></div>
+
+<!-- ۱۰. اسکلتون لودینگ -->
+<div id="skeleton-grid"></div>
+
+<div id="loader"></div>
+<div id="error-msg">خطا در دریافت اطلاعات. لطفاً دوباره تلاش کنید.</div>
+
+<div id="grid" style="display:none"></div>
+
+<div id="flash"></div>
+
+<script>
+  const DEFAULT_REFRESH_SEC = 120;
+  const MIN_REFRESH_SEC = 5;
+
+  let REFRESH_SEC = parseInt(localStorage.getItem('refreshIntervalSec'), 10) || DEFAULT_REFRESH_SEC;
+  let countdownVal = REFRESH_SEC;
+  let timer;
+  let hiddenGroups = new Set();
+  let activeKeyIndex = 1;
+  let isPaused = false;
+
+  // ۳. نگه‌داری مقادیر قبلی برای count-up animation
+  let prevGroupData = {};
+
+  // ۲. نگه‌داری mq قبلی برای تشخیص تغییر بج سهام
+  let prevSymbolValues = {};
+
+  function fmt(v) {
+    const sign = v > 0 ? '+' : '';
+    return sign + v.toFixed(2) + '%';
+  }
+
+  function flash(message, isError) {
+    const el = document.getElementById('flash');
+    el.textContent = (isError ? '✗ ' : '✓ ') + message;
+    el.classList.toggle('flash-error', !!isError);
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  }
+
+  function greenClass(plp) {
+    if (plp > 2)   return 'g-hi';
+    if (plp >= 1)  return 'g-md';
+    return 'g-lo';
+  }
+
+  function redClass(plp) {
+    if (plp < -2)  return 'r-hi';
+    if (plp <= -1) return 'r-md';
+    return 'r-lo';
+  }
+
+  // ─── ۱۰. ساخت skeleton کارت‌ها ───
+  function showSkeleton(count) {
+    const skGrid = document.getElementById('skeleton-grid');
+    const cards = Array.from({length: count}, () => `
+      <div class="skeleton-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div class="sk-line" style="height:16px;width:55%;"></div>
+          <div class="sk-line" style="height:20px;width:20%;border-radius:20px;"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:14px;">
+          <div class="sk-line" style="height:46px;flex:1;border-radius:8px;"></div>
+          <div class="sk-line" style="height:46px;flex:1;border-radius:8px;"></div>
+        </div>
+        <div class="sk-line" style="height:60px;width:100%;border-radius:8px;margin-bottom:14px;"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <div class="sk-line" style="height:28px;width:22%;border-radius:6px;"></div>
+          <div class="sk-line" style="height:28px;width:30%;border-radius:6px;"></div>
+          <div class="sk-line" style="height:28px;width:18%;border-radius:6px;"></div>
+          <div class="sk-line" style="height:28px;width:26%;border-radius:6px;"></div>
+        </div>
+      </div>`).join('');
+    skGrid.innerHTML = cards;
+    skGrid.style.display = 'grid';
+    document.getElementById('grid').style.display = 'none';
+  }
+
+  function hideSkeleton() {
+    const skGrid = document.getElementById('skeleton-grid');
+    skGrid.style.display = 'none';
+    skGrid.innerHTML = '';
+  }
+
+  // ─── ۳. Count-up animation ───
+  function animateNumber(el, fromVal, toVal, duration) {
+    const start = performance.now();
+    const sign = toVal >= 0 ? '+' : '';
+    function tick(now) {
+      const t = Math.min((now - start) / duration, 1);
+      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
+      const cur = fromVal + (toVal - fromVal) * ease;
+      el.textContent = sign + cur.toFixed(2) + '%';
+      if (t < 1) requestAnimationFrame(tick);
+      else el.textContent = sign + toVal.toFixed(2) + '%';
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // ─── ۷. مخفی کردن کارت با انیمیشن ───
+  function hideCard(groupName) {
+    hiddenGroups.add(groupName);
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(c => {
+      if (c.dataset.group === groupName) {
+        c.classList.add('card-hiding');
+        c.addEventListener('animationend', () => c.classList.add('hidden'), {once: true});
+      }
+    });
+  }
+
+  // ─── ۴. رسم تدریجی نمودار ───
+  function renderTrendChart(history) {
+    if (!history || history.length < 2) {
+      return `<div class="trend-empty">برای رسم نمودار باید چند بار صفحه رفرش شود</div>`;
+    }
+
+    const W = 600, H = 100, PAD_X = 4, PAD_Y = 10;
+    const values = history.map(p => p.v);
+    let min = Math.min(...values, 0);
+    let max = Math.max(...values, 0);
+    if (min === max) { min -= 1; max += 1; }
+
+    const range = max - min;
+    const innerW = W - PAD_X * 2;
+    const innerH = H - PAD_Y * 2;
+    const stepX = history.length > 1 ? innerW / (history.length - 1) : 0;
+
+    const toY = v => PAD_Y + innerH - ((v - min) / range) * innerH;
+    const toX = i => PAD_X + i * stepX;
+
+    const points = values.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+    const zeroY = toY(0).toFixed(1);
+    const lastVal = values[values.length - 1];
+    const lineColor = lastVal > 0 ? 'var(--green-hi)' : (lastVal < 0 ? 'var(--red-hi)' : 'var(--zero)');
+    const areaPoints = `${toX(0).toFixed(1)},${zeroY} ${points} ${toX(values.length - 1).toFixed(1)},${zeroY}`;
+    const lastX = toX(values.length - 1).toFixed(1);
+    const lastY = toY(lastVal).toFixed(1);
+
+    // ۴. polyline با کلاس انیمیشن رسم
+    return `
+      <div class="trend-chart-wrap">
+        <svg class="trend-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+          <line x1="${PAD_X}" y1="${zeroY}" x2="${W - PAD_X}" y2="${zeroY}"
+                stroke="var(--border)" stroke-width="1.5" stroke-dasharray="4,4" />
+          <polygon points="${areaPoints}" fill="${lineColor}" opacity="0.12" stroke="none" />
+          <polyline class="trend-line-anim" points="${points}" fill="none" stroke="${lineColor}" stroke-width="2.5"
+                     stroke-linejoin="round" stroke-linecap="round" />
+          <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="${lineColor}" />
+        </svg>
+      </div>`;
+  }
+
+  function renderCard(g) {
+    const isHidden = hiddenGroups.has(g.group) ? 'hidden' : '';
+
+    // ۹. کلاس داغ بودن کارت
+    let hotClass = '';
+    if (g.avg_total >= 2)  hotClass = 'hot-pos';
+    if (g.avg_total <= -2) hotClass = 'hot-neg';
+
+    const trendValClass = g.avg_total > 0 ? 'pos' : (g.avg_total < 0 ? 'neg' : 'zero');
+
+    // ۳. مقدار قبلی میانگین‌ها برای count-up
+    const prev = prevGroupData[g.group] || {};
+    const prevPos   = prev.avg_pos   !== undefined ? prev.avg_pos   : g.avg_pos;
+    const prevNeg   = prev.avg_neg   !== undefined ? prev.avg_neg   : g.avg_neg;
+    const prevTotal = prev.avg_total !== undefined ? prev.avg_total : g.avg_total;
+
+    const trendSection = `
+      <div class="trend-section">
+        <div class="trend-header">
+          <span class="trend-title">روند میانگین کل گروه (همه‌ی نمادها)</span>
+          <span class="trend-value ${trendValClass}" data-group="${g.group}" data-field="total"
+                data-from="${prevTotal}" data-to="${g.avg_total}">${fmt(g.avg_total)}</span>
+        </div>
+        ${renderTrendChart(g.history)}
+      </div>`;
+
+    const posSection = g.above_avg_pos.length ? `
+      <div class="sym-section">
+        <div class="sym-section-title">
+          <span class="dot dot-green"></span>
+          بالای میانگین مثبت
+        </div>
+        <div class="sym-list">
+          ${g.above_avg_pos.map(s => {
+            const key = g.group + '|' + s.name;
+            const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
+            return `<div class="sym-tag ${greenClass(s.plp)}${changed ? ' changed' : ''}"
+                         data-sym-key="${key}">
+              ${s.name}
+              <span class="sym-pct">${fmt(s.plp)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : '';
+
+    const negSection = g.between.length ? `
+      <div class="sym-section">
+        <div class="sym-section-title">
+          <span class="dot dot-red"></span>
+          بین میانگین منفی و صفر
+        </div>
+        <div class="sym-list">
+          ${g.between.map(s => {
+            const key = g.group + '|' + s.name;
+            const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
+            return `<div class="sym-tag ${redClass(s.plp)}${changed ? ' changed' : ''}"
+                         data-sym-key="${key}">
+              ${s.name}
+              <span class="sym-pct">${fmt(s.plp)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : '';
+
+    return `
+      <div class="card ${isHidden} ${hotClass}" data-group="${g.group}"
+           data-avg-pos="${g.avg_pos}" data-avg-neg="${g.avg_neg}" data-avg-total="${g.avg_total}"
+           data-prev-pos="${prevPos}" data-prev-neg="${prevNeg}" data-prev-total="${prevTotal}">
+        <div class="card-header">
+          <div class="group-name">${g.group}</div>
+          <div class="header-badges">
+            <div class="count-badge">${g.count} نماد</div>
+            <button class="hide-btn" title="مخفی کردن این گروه" onclick="hideCard('${g.group.replace(/'/g,"\\'")}')">✕</button>
+          </div>
+        </div>
+        <div class="avg-row">
+          <div class="avg-chip pos">
+            <span class="avg-label">میانگین مثبت</span>
+            <span class="avg-val" data-group="${g.group}" data-field="pos"
+                  data-from="${prevPos}" data-to="${g.avg_pos}">
+              ${g.avg_pos > 0 ? fmt(g.avg_pos) : '---'}
+            </span>
+          </div>
+          <div class="avg-chip neg">
+            <span class="avg-label">میانگین منفی</span>
+            <span class="avg-val" data-group="${g.group}" data-field="neg"
+                  data-from="${prevNeg}" data-to="${g.avg_neg}">
+              ${g.avg_neg < 0 ? fmt(g.avg_neg) : '---'}
+            </span>
+          </div>
+        </div>
+        ${trendSection}
+        ${posSection}
+        ${negSection}
+      </div>`;
+  }
+
+  // ─── بعد از رندر کارت‌ها: اجرای انیمیشن‌های post-render ───
+  function runPostRenderAnimations(groups) {
+    // ۳. Count-up روی avg-val ها
+    document.querySelectorAll('[data-field]').forEach(el => {
+      const from = parseFloat(el.dataset.from);
+      const to   = parseFloat(el.dataset.to);
+      const field = el.dataset.field;
+      if (isNaN(from) || isNaN(to)) return;
+      if (Math.abs(to - from) < 0.001) return; // تغییری نیست
+
+      // فقط برای مقادیر معتبر
+      if (field === 'pos' && to <= 0) return;
+      if (field === 'neg' && to >= 0) return;
+      animateNumber(el, from, to, 500);
+    });
+
+    // ۱. ورود تدریجی کارت‌ها با تأخیر staggered
+    document.querySelectorAll('.card:not(.hidden)').forEach((card, i) => {
+      card.style.animationDelay = `${i * 30}ms`;
+      card.classList.add('card-enter');
+    });
+
+    // ذخیره مقادیر فعلی برای رفرش بعدی
+    groups.forEach(g => {
+      prevGroupData[g.group] = {
+        avg_pos: g.avg_pos,
+        avg_neg: g.avg_neg,
+        avg_total: g.avg_total
+      };
+      // ۲. ذخیره مقادیر سهام
+      g.above_avg_pos.forEach(s => {
+        prevSymbolValues[g.group + '|' + s.name] = s.plp;
+      });
+      g.between.forEach(s => {
+        prevSymbolValues[g.group + '|' + s.name] = s.plp;
+      });
+    });
+  }
+
+  async function loadData() {
+    clearInterval(timer);
+
+    // ۶. اسپین دکمه رفرش
+    const refreshBtn = document.getElementById('refresh-btn');
+    refreshBtn.classList.add('loading');
+    refreshBtn.disabled = true;
+
+    // نمایش skeleton اگه اولین بار است
+    const grid = document.getElementById('grid');
+    if (grid.style.display === 'none' || grid.innerHTML.trim() === '') {
+      showSkeleton(8);
+    }
+
+    try {
+      const res = await fetch('/api/data');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'خطای ناشناخته در دریافت اطلاعات');
+
+      const now = new Date();
+      document.getElementById('last-update').textContent =
+        `آخرین بروزرسانی: ${now.toLocaleTimeString('fa-IR')}`;
+
+      document.getElementById('summary-bar').innerHTML = `
+        <div class="summary-chip">کل نمادها: <strong>${data.total}</strong></div>
+        <div class="summary-chip">حذف‌شده: <strong>${data.skipped}</strong></div>
+        <div class="summary-chip">گروه‌ها: <strong>${data.groups.length}</strong></div>
+      `;
+
+      data.groups.sort((a, b) => b.avg_pos - a.avg_pos);
+
+      hideSkeleton();
+      document.getElementById('error-msg').style.display = 'none';
+      grid.innerHTML = data.groups.map(renderCard).join('');
+      grid.style.display = 'grid';
+
+      runPostRenderAnimations(data.groups);
+      flash('داده‌ها بروز شد');
+
+    } catch (e) {
+      const msg = e.message || 'خطا در دریافت اطلاعات. لطفاً دوباره تلاش کنید.';
+      hideSkeleton();
+      document.getElementById('loader').style.display = 'none';
+      document.getElementById('error-msg').textContent = msg;
+      document.getElementById('error-msg').style.display = 'block';
+      flash(msg, true);
+    } finally {
+      // ۶. توقف اسپین
+      refreshBtn.classList.remove('loading');
+      refreshBtn.disabled = false;
+    }
+
+    if (!isPaused) startCountdown();
+  }
+
+  // ─── ۵. رینگ شمارش معکوس ───
+  const RING_R = 13;
+  const RING_CIRC = 2 * Math.PI * RING_R; // ≈ 81.68
+
+  function updateRing(remaining, total) {
+    const fill = document.getElementById('countdown-ring-fill');
+    const pct = remaining / total;
+    const offset = RING_CIRC * (1 - pct);
+    fill.style.strokeDasharray = `${RING_CIRC}`;
+    fill.style.strokeDashoffset = `${offset}`;
+    // رنگ رینگ: سبز → زرد → قرمز
+    if (pct > 0.5)      fill.style.stroke = 'var(--green-hi)';
+    else if (pct > 0.2) fill.style.stroke = 'var(--yellow)';
+    else                fill.style.stroke = 'var(--red-hi)';
+  }
+
+  function startCountdown() {
+    clearInterval(timer);
+    if (isPaused) return;
+    countdownVal = REFRESH_SEC;
+    document.getElementById('countdown-text').textContent = `${countdownVal}s`;
+    updateRing(countdownVal, REFRESH_SEC);
+
+    timer = setInterval(() => {
+      if (isPaused) return;
+      countdownVal--;
+      document.getElementById('countdown-text').textContent = `${countdownVal}s`;
+      updateRing(countdownVal, REFRESH_SEC);
+      if (countdownVal <= 0) loadData();
+    }, 1000);
+  }
+
+  // ─── توقف / ادامه ───
+  function togglePause() {
+    isPaused = !isPaused;
+    const btn = document.getElementById('pause-btn');
+    const label = document.getElementById('pause-label');
+    const icon = btn.querySelector('.pause-icon');
+    const ring = document.getElementById('countdown-ring-fill');
+    const cText = document.getElementById('countdown-text');
+
+    if (isPaused) {
+      clearInterval(timer);
+      btn.classList.add('paused');
+      icon.textContent = '▶';
+      label.textContent = 'ادامه';
+      ring.style.stroke = 'var(--muted)';
+      cText.style.color = 'var(--muted)';
+      flash('بروزرسانی خودکار متوقف شد');
+    } else {
+      btn.classList.remove('paused');
+      icon.textContent = '⏸';
+      label.textContent = 'توقف';
+      cText.style.color = 'var(--yellow)';
+      startCountdown();
+      flash('بروزرسانی خودکار از سر گرفته شد');
+    }
+  }
+
+  // ─── سوییچ توکن ───
+  function updateTokenButtons() {
+    document.querySelectorAll('.token-btn').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.key, 10) === activeKeyIndex);
+    });
+  }
+
+  async function switchToken(idx) {
+    if (idx === activeKeyIndex) {
+      flash(`توکن ${idx} از قبل فعال است`);
+      return;
+    }
+    try {
+      const res = await fetch('/api/switch-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index: idx })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'خطا در سوییچ توکن');
+
+      activeKeyIndex = data.active;
+      updateTokenButtons();
+
+      // ۸. هایلایت هدر
+      const header = document.getElementById('main-header');
+      header.classList.remove('token-flash');
+      void header.offsetWidth; // reflow برای ریست انیمیشن
+      header.classList.add('token-flash');
+      header.addEventListener('animationend', () => header.classList.remove('token-flash'), {once: true});
+
+      flash(`سوییچ به توکن ${idx} انجام شد`);
+      loadData();
+    } catch (e) {
+      flash(e.message || 'خطا در سوییچ توکن', true);
+    }
+  }
+
+  async function initKeyStatus() {
+    try {
+      const res = await fetch('/api/key-status');
+      if (!res.ok) return;
+      const data = await res.json();
+      activeKeyIndex = data.active || 1;
+    } catch (e) {
+      // پیش‌فرض توکن 1
+    } finally {
+      updateTokenButtons();
+    }
+  }
+
+  function applyInterval() {
+    const input = document.getElementById('interval-input');
+    const val = parseInt(input.value, 10);
+
+    if (!val || val < MIN_REFRESH_SEC) {
+      flash(`حداقل بازه‌ی رفرش مجاز ${MIN_REFRESH_SEC} ثانیه است`, true);
+      input.value = REFRESH_SEC;
+      return;
+    }
+
+    REFRESH_SEC = val;
+    localStorage.setItem('refreshIntervalSec', String(val));
+    startCountdown();
+    flash(`بازه‌ی رفرش روی ${val} ثانیه تنظیم شد`);
+  }
+
+  document.getElementById('interval-input').value = REFRESH_SEC;
+  initKeyStatus();
+  loadData();
+</script>
+</body>
+</html>

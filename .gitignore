@@ -1,0 +1,22 @@
+# توکن‌ها و اطلاعات حساس — هرگز پوش نشه
+.env
+active_key.json
+
+# تاریخچه (اختیاری — اگه نمی‌خوای پوش بشه کامنتش رو بردار)
+# group_history.json
+
+# پایتون
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# ویندوز
+Thumbs.db
+desktop.ini
