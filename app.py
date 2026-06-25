@@ -5,17 +5,14 @@ import json
 import os
 from datetime import datetime
 from collections import defaultdict
-from dotenv import load_dotenv
-
-load_dotenv()  # فایل .env رو از همون پوشه می‌خونه (فقط روی لوکال کار می‌کنه)
 
 app = Flask(__name__)
 CORS(app)
 
-# توکن‌ها از متغیرهای محیطی خونده می‌شن — هرگز مستقیم اینجا ننویس
+# دو توکن API — توکن دومی که گرفتی رو جای PUT_YOUR_SECOND_TOKEN_HERE بگذار
 API_KEYS = {
-    1: os.environ.get("BRSAPI_KEY_1", ""),
-    2: os.environ.get("BRSAPI_KEY_2", ""),
+    1: "B5zgBWpp87rDlVHmL6Rx963abdhRaNhT",
+    2: "Bujirlnr79wxmwRbPUupj2WH22v6fi9M",
 }
 
 HEADERS = {
@@ -192,10 +189,13 @@ def fetch_and_process():
         except (TypeError, ValueError):
             buy_queue_value = 0
 
+        isin = s.get("isin", "") or ""
+
         groups[group]["symbols_data"].append({
             "name": name,
             "plp": plp,
             "buy_queue_value": buy_queue_value,
+            "isin": isin,
         })
 
     results = []

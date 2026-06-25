@@ -500,6 +500,16 @@
       display: flex;
       align-items: center;
       gap: 5px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: filter 0.15s, transform 0.1s;
+    }
+    .sym-tag:hover {
+      filter: brightness(1.18);
+      transform: translateY(-1px);
+    }
+    .sym-tag:active {
+      transform: translateY(0px);
     }
 
     .sym-tag.g-hi  { background: var(--green-hi);  color: #fff; }
@@ -818,11 +828,12 @@
           ${g.above_avg_pos.map(s => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
-            return `<div class="sym-tag ${greenClass(s.plp)}${changed ? ' changed' : ''}"
-                         data-sym-key="${key}">
+            const href = s.isin ? `https://tgbourse.com/symbol/${encodeURIComponent(s.name)}-${s.isin}` : '#';
+            return `<a class="sym-tag ${greenClass(s.plp)}${changed ? ' changed' : ''}"
+                       data-sym-key="${key}" href="${href}" target="_blank" rel="noopener">
               ${s.name}
               <span class="sym-pct">${fmt(s.plp)}</span>
-            </div>`;
+            </a>`;
           }).join('')}
         </div>
       </div>` : '';
@@ -837,11 +848,12 @@
           ${g.between.map(s => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
-            return `<div class="sym-tag ${redClass(s.plp)}${changed ? ' changed' : ''}"
-                         data-sym-key="${key}">
+            const href = s.isin ? `https://tgbourse.com/symbol/${encodeURIComponent(s.name)}-${s.isin}` : '#';
+            return `<a class="sym-tag ${redClass(s.plp)}${changed ? ' changed' : ''}"
+                       data-sym-key="${key}" href="${href}" target="_blank" rel="noopener">
               ${s.name}
               <span class="sym-pct">${fmt(s.plp)}</span>
-            </div>`;
+            </a>`;
           }).join('')}
         </div>
       </div>` : '';
@@ -959,8 +971,9 @@
           ${g.above_avg_pos.map(s => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
-            return '<div class="sym-tag ' + greenClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '">'
-              + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></div>';
+            const href = s.isin ? 'https://tgbourse.com/symbol/' + encodeURIComponent(s.name) + '-' + s.isin : '#';
+            return '<a class="sym-tag ' + greenClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '" href="' + href + '" target="_blank" rel="noopener">'
+              + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></a>';
           }).join('')}
         </div>`;
       if (posSym) posSym.innerHTML = newHtml;
@@ -985,8 +998,9 @@
           ${g.between.map(s => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
-            return '<div class="sym-tag ' + redClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '">'
-              + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></div>';
+            const href = s.isin ? 'https://tgbourse.com/symbol/' + encodeURIComponent(s.name) + '-' + s.isin : '#';
+            return '<a class="sym-tag ' + redClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '" href="' + href + '" target="_blank" rel="noopener">'
+              + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></a>';
           }).join('')}
         </div>`;
       if (negSym) negSym.innerHTML = newHtml;
