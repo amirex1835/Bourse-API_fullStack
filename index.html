@@ -879,43 +879,148 @@
       </div>`;
   }
 
-  // ─── بعد از رندر کارت‌ها: اجرای انیمیشن‌های post-render ───
-  function runPostRenderAnimations(groups) {
-    // ۳. Count-up روی avg-val ها
-    document.querySelectorAll('[data-field]').forEach(el => {
-      const from = parseFloat(el.dataset.from);
-      const to   = parseFloat(el.dataset.to);
-      const field = el.dataset.field;
-      if (isNaN(from) || isNaN(to)) return;
-      if (Math.abs(to - from) < 0.001) return; // تغییری نیست
-
-      // فقط برای مقادیر معتبر
-      if (field === 'pos' && to <= 0) return;
-      if (field === 'neg' && to >= 0) return;
-      animateNumber(el, from, to, 500);
-    });
-
-    // ۱. ورود تدریجی کارت‌ها با تأخیر staggered
-    document.querySelectorAll('.card:not(.hidden)').forEach((card, i) => {
+  // ─── بعد از رندر اولیه: انیمیشن ورود کارت‌های جدید ───
+  function animateNewCards(cardEls) {
+    cardEls.forEach((card, i) => {
       card.style.animationDelay = `${i * 30}ms`;
       card.classList.add('card-enter');
     });
+  }
 
-    // ذخیره مقادیر فعلی برای رفرش بعدی
+  // ─── آپدیت درجا یک کارت موجود (بدون پاک کردن DOM) ───
+  function patchCard(cardEl, g) {
+    const prev = prevGroupData[g.group] || {};
+
+    // ۹. کلاس hot
+    cardEl.classList.remove('hot-pos', 'hot-neg');
+    if (g.avg_total >= 2)  cardEl.classList.add('hot-pos');
+    if (g.avg_total <= -2) cardEl.classList.add('hot-neg');
+
+    // تعداد نماد
+    const badge = cardEl.querySelector('.count-badge');
+    if (badge) badge.textContent = g.count + ' نماد';
+
+    // ۳. count-up روی avg-val مثبت
+    const posEl = cardEl.querySelector('.avg-val[data-field="pos"]');
+    if (posEl) {
+      const fromPos = prev.avg_pos !== undefined ? prev.avg_pos : g.avg_pos;
+      posEl.dataset.from = fromPos;
+      posEl.dataset.to   = g.avg_pos;
+      if (g.avg_pos > 0) {
+        if (Math.abs(g.avg_pos - fromPos) >= 0.001) animateNumber(posEl, fromPos, g.avg_pos, 500);
+        else posEl.textContent = fmt(g.avg_pos);
+      } else {
+        posEl.textContent = '---';
+      }
+    }
+
+    // ۳. count-up روی avg-val منفی
+    const negEl = cardEl.querySelector('.avg-val[data-field="neg"]');
+    if (negEl) {
+      const fromNeg = prev.avg_neg !== undefined ? prev.avg_neg : g.avg_neg;
+      negEl.dataset.from = fromNeg;
+      negEl.dataset.to   = g.avg_neg;
+      if (g.avg_neg < 0) {
+        if (Math.abs(g.avg_neg - fromNeg) >= 0.001) animateNumber(negEl, fromNeg, g.avg_neg, 500);
+        else negEl.textContent = fmt(g.avg_neg);
+      } else {
+        negEl.textContent = '---';
+      }
+    }
+
+    // ۳. count-up روی avg_total + رنگ
+    const totalEl = cardEl.querySelector('.trend-value[data-field="total"]');
+    if (totalEl) {
+      const fromTotal = prev.avg_total !== undefined ? prev.avg_total : g.avg_total;
+      totalEl.dataset.from = fromTotal;
+      totalEl.dataset.to   = g.avg_total;
+      totalEl.className = 'trend-value ' + (g.avg_total > 0 ? 'pos' : g.avg_total < 0 ? 'neg' : 'zero');
+      if (Math.abs(g.avg_total - fromTotal) >= 0.001) animateNumber(totalEl, fromTotal, g.avg_total, 500);
+      else totalEl.textContent = fmt(g.avg_total);
+    }
+
+    // نمودار trend — همیشه آپدیت می‌شه (داده‌ی جدید اضافه شده)
+    const trendWrap = cardEl.querySelector('.trend-section');
+    if (trendWrap) {
+      const trendInner = trendWrap.querySelector('.trend-chart-wrap, .trend-empty');
+      const newChart = renderTrendChart(g.history);
+      const tmp = document.createElement('div');
+      tmp.innerHTML = newChart;
+      if (trendInner) trendInner.replaceWith(tmp.firstElementChild);
+      else trendWrap.insertAdjacentHTML('beforeend', newChart);
+    }
+
+    // ─── آپدیت بج‌های سهام مثبت ───
+    const posSym = cardEl.querySelector('.sym-section:has(.dot-green)');
+    if (g.above_avg_pos.length) {
+      const newHtml = `
+        <div class="sym-section-title"><span class="dot dot-green"></span>بالای میانگین مثبت</div>
+        <div class="sym-list">
+          ${g.above_avg_pos.map(s => {
+            const key = g.group + '|' + s.name;
+            const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
+            return '<div class="sym-tag ' + greenClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '">'
+              + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></div>';
+          }).join('')}
+        </div>`;
+      if (posSym) posSym.innerHTML = newHtml;
+      else {
+        const negSym = cardEl.querySelector('.sym-section:has(.dot-red)');
+        const sec = document.createElement('div');
+        sec.className = 'sym-section';
+        sec.innerHTML = newHtml;
+        if (negSym) cardEl.insertBefore(sec, negSym);
+        else cardEl.appendChild(sec);
+      }
+    } else if (posSym) {
+      posSym.remove();
+    }
+
+    // ─── آپدیت بج‌های سهام منفی ───
+    const negSym = cardEl.querySelector('.sym-section:has(.dot-red)');
+    if (g.between.length) {
+      const newHtml = `
+        <div class="sym-section-title"><span class="dot dot-red"></span>بین میانگین منفی و صفر</div>
+        <div class="sym-list">
+          ${g.between.map(s => {
+            const key = g.group + '|' + s.name;
+            const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
+            return '<div class="sym-tag ' + redClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '">'
+              + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></div>';
+          }).join('')}
+        </div>`;
+      if (negSym) negSym.innerHTML = newHtml;
+      else {
+        const sec = document.createElement('div');
+        sec.className = 'sym-section';
+        sec.innerHTML = newHtml;
+        cardEl.appendChild(sec);
+      }
+    } else if (negSym) {
+      negSym.remove();
+    }
+  }
+
+  // ─── ذخیره مقادیر فعلی برای رفرش بعدی ───
+  function saveCurrentValues(groups) {
     groups.forEach(g => {
       prevGroupData[g.group] = {
         avg_pos: g.avg_pos,
         avg_neg: g.avg_neg,
         avg_total: g.avg_total
       };
-      // ۲. ذخیره مقادیر سهام
-      g.above_avg_pos.forEach(s => {
-        prevSymbolValues[g.group + '|' + s.name] = s.plp;
-      });
-      g.between.forEach(s => {
-        prevSymbolValues[g.group + '|' + s.name] = s.plp;
-      });
+      g.above_avg_pos.forEach(s => { prevSymbolValues[g.group + '|' + s.name] = s.plp; });
+      g.between.forEach(s => { prevSymbolValues[g.group + '|' + s.name] = s.plp; });
     });
+  }
+
+  // ─── (نگه‌داشته شده برای سازگاری — فقط اولین بار استفاده می‌شه) ───
+  function runPostRenderAnimations(groups) {
+    document.querySelectorAll('.card:not(.hidden)').forEach((card, i) => {
+      card.style.animationDelay = `${i * 30}ms`;
+      card.classList.add('card-enter');
+    });
+    saveCurrentValues(groups);
   }
 
   async function loadData() {
@@ -951,10 +1056,49 @@
 
       hideSkeleton();
       document.getElementById('error-msg').style.display = 'none';
-      grid.innerHTML = data.groups.map(renderCard).join('');
       grid.style.display = 'grid';
 
-      runPostRenderAnimations(data.groups);
+      const isFirstLoad = grid.innerHTML.trim() === '';
+
+      if (isFirstLoad) {
+        // اولین بار: رندر کامل
+        grid.innerHTML = data.groups.map(renderCard).join('');
+        runPostRenderAnimations(data.groups);
+      } else {
+        // رفرش‌های بعدی: patch درجا
+        const incomingGroups = new Map(data.groups.map(g => [g.group, g]));
+        const existingCards  = new Map();
+        grid.querySelectorAll('.card[data-group]').forEach(c => existingCards.set(c.dataset.group, c));
+
+        // کارت‌هایی که دیگه در داده نیستن → حذف
+        existingCards.forEach((cardEl, groupName) => {
+          if (!incomingGroups.has(groupName)) {
+            cardEl.classList.add('card-hiding');
+            cardEl.addEventListener('animationend', () => cardEl.remove(), {once: true});
+          }
+        });
+
+        // کارت‌های جدید یا موجود
+        const newCardEls = [];
+        data.groups.forEach(g => {
+          if (existingCards.has(g.group)) {
+            // موجود → patch
+            patchCard(existingCards.get(g.group), g);
+          } else {
+            // جدید → اضافه کن
+            const tmp = document.createElement('div');
+            tmp.innerHTML = renderCard(g);
+            const newCard = tmp.firstElementChild;
+            grid.appendChild(newCard);
+            newCardEls.push(newCard);
+          }
+        });
+
+        // انیمیشن ورود فقط برای کارت‌های جدید
+        animateNewCards(newCardEls);
+        saveCurrentValues(data.groups);
+      }
+
       flash('داده‌ها بروز شد');
 
     } catch (e) {
