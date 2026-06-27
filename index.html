@@ -155,6 +155,67 @@
       color: var(--green-hi);
     }
 
+    /* ─── SYM POPUP MENU ─── */
+    #sym-popup {
+      position: fixed;
+      z-index: 9999;
+      background: #1c2128;
+      border: 1px solid #373e47;
+      border-radius: 10px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.6);
+      padding: 4px;
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 150px;
+    }
+    #sym-popup.visible {
+      display: flex;
+      animation: popupIn 0.13s ease-out both;
+    }
+    @keyframes popupIn {
+      from { opacity: 0; transform: translateY(5px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .popup-title {
+      font-size: 0.7rem;
+      color: var(--muted);
+      padding: 5px 9px 5px;
+      border-bottom: 1px solid #373e47;
+      margin-bottom: 1px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+    .popup-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 6px;
+      color: #cdd5e0;
+      padding: 7px 9px;
+      font-family: inherit;
+      font-size: 0.79rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.1s, color 0.1s;
+      white-space: nowrap;
+      border: none;
+    }
+    .popup-btn:hover { color: #fff; }
+    #popup-arshan:hover { background: rgba(139,92,246,0.2); }
+    #popup-tsetmc:hover { background: rgba(217,119,6,0.18); }
+    .pb-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .pb-arshan { background: #8b5cf6; }
+    .pb-tsetmc { background: #d97706; }
+
     /* ─── PAUSE / RESUME ─── */
     #pause-btn {
       background: var(--surface);
@@ -716,6 +777,17 @@
 
 <div id="grid" style="display:none"></div>
 
+<!-- پاپ‌آپ انتخاب سایت نماد -->
+<div id="sym-popup">
+  <div class="popup-title" id="popup-sym-name">—</div>
+  <a class="popup-btn" id="popup-arshan" href="#" target="_blank" rel="noopener">
+    <span class="pb-dot pb-arshan"></span> ارشن تکنیکال
+  </a>
+  <a class="popup-btn" id="popup-tsetmc" href="#" target="_blank" rel="noopener">
+    <span class="pb-dot pb-tsetmc"></span> TSETMC
+  </a>
+</div>
+
 <div id="flash"></div>
 
 <script>
@@ -728,6 +800,79 @@
   let hiddenGroups = new Set();
   let activeKeyIndex = 1;
   let isPaused = false;
+
+  // ─── پاپ‌آپ انتخاب سایت نماد ───
+  let popupOpen = false;
+
+  function buildHref(s) {
+    // لینک پیش‌فرض (برای href اصلی تگ — به‌عنوان fallback)
+    return s.isin
+      ? 'https://tgbourse.com/symbol/' + encodeURIComponent(s.name) + '-' + s.isin
+      : '#';
+  }
+
+  function openSymPopup(e, el) {
+    // el می‌تونه مستقیم پاس بشه یا از currentTarget گرفته بشه
+    el = el || e.currentTarget;
+    const name = el.dataset.name || '';
+    const isin = el.dataset.isin || '';
+    const sid  = el.dataset.sid  || '';
+
+    const popup = document.getElementById('sym-popup');
+    document.getElementById('popup-sym-name').textContent = name;
+
+    // لینک ارشن
+    document.getElementById('popup-arshan').href =
+      isin ? 'https://www.nahayatnegar.com/tv/' + isin : '#';
+
+    // لینک TSETMC
+    document.getElementById('popup-tsetmc').href =
+      sid ? 'https://old.tsetmc.com/Loader.aspx?ParTree=151311&i=' + sid : '#';
+
+    // موقعیت پاپ‌آپ: بالای نماد کلیک‌شده
+    // توجه: #sym-popup با position:fixed موقعیت‌دهی شده، یعنی مختصاتش نسبت به viewport
+    // است نه نسبت به کل سند؛ بنابراین هرگز نباید window.scrollY به آن اضافه شود
+    // (همین موضوع باعث می‌شد بعد از اسکرول صفحه، پاپ‌آپ کاملاً خارج از دیدِ کاربر رندر شود
+    // و کلیک روی نمادهای گروه‌های پایین‌تر از صفحه عملاً بی‌اثر به نظر برسد).
+    const rect = el.getBoundingClientRect();
+    popup.style.display = 'flex';
+    const pw = popup.offsetWidth;
+    const ph = popup.offsetHeight;
+
+    let left = rect.left + rect.width / 2 - pw / 2;
+    let top  = rect.top - ph - 8;
+
+    if (left < 8) left = 8;
+    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    if (top < 8) top = rect.bottom + 8;
+    if (top + ph > window.innerHeight - 8) top = window.innerHeight - ph - 8;
+
+    popup.style.left = left + 'px';
+    popup.style.top  = top + 'px';
+    popup.classList.add('visible');
+    popupOpen = true;
+  }
+
+  function closeSymPopup() {
+    document.getElementById('sym-popup').classList.remove('visible');
+    document.getElementById('sym-popup').style.display = '';
+    popupOpen = false;
+  }
+
+  // delegation روی document — همه کلیک‌ها رو می‌گیره صرف‌نظر از زمان رندر
+  document.addEventListener('click', function(e) {
+    const tag = e.target.closest('a.sym-tag[data-name]');
+    if (tag) {
+      e.preventDefault();
+      e.stopPropagation();
+      openSymPopup(e, tag);
+      return;
+    }
+    // کلیک بیرون از پاپ‌آپ → بستن
+    if (popupOpen && !document.getElementById('sym-popup').contains(e.target)) {
+      closeSymPopup();
+    }
+  });
   let sortDir = 'desc'; // 'desc' = مثبت به منفی ، 'asc' = منفی به مثبت
 
   // ۳. نگه‌داری مقادیر قبلی برای count-up animation
@@ -939,10 +1084,12 @@
           ${g.above_avg_pos.map((s, idx) => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
-            const href = s.isin ? `https://tgbourse.com/symbol/${encodeURIComponent(s.name)}-${s.isin}` : '#';
+            const href = buildHref(s);
             const star = idx < 3 ? '<span class="sym-star">★</span>' : '';
             return `<a class="sym-tag ${greenClass(s.plp)}${changed ? ' changed' : ''}"
-                       data-sym-key="${key}" href="${href}" target="_blank" rel="noopener">
+                       data-sym-key="${key}"
+                       data-name="${s.name}" data-isin="${s.isin||''}" data-sid="${s.id||''}"
+                       href="#">
               ${star}${s.name}
               <span class="sym-pct">${fmt(s.plp)}</span>
             </a>`;
@@ -957,13 +1104,15 @@
           بین میانگین منفی و صفر
         </div>
         <div class="sym-list">
-          ${g.between.map((s, idx) => {
+          ${[...g.between].reverse().map((s, idx) => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
-            const href = s.isin ? `https://tgbourse.com/symbol/${encodeURIComponent(s.name)}-${s.isin}` : '#';
+            const href = buildHref(s);
             const star = idx < 3 ? '<span class="sym-star">★</span>' : '';
             return `<a class="sym-tag ${redClass(s.plp)}${changed ? ' changed' : ''}"
-                       data-sym-key="${key}" href="${href}" target="_blank" rel="noopener">
+                       data-sym-key="${key}"
+                       data-name="${s.name}" data-isin="${s.isin||''}" data-sid="${s.id||''}"
+                       href="#">
               ${star}${s.name}
               <span class="sym-pct">${fmt(s.plp)}</span>
             </a>`;
@@ -1084,9 +1233,9 @@
           ${g.above_avg_pos.map((s, idx) => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
-            const href = s.isin ? 'https://tgbourse.com/symbol/' + encodeURIComponent(s.name) + '-' + s.isin : '#';
+            const href = buildHref(s);
             const star = idx < 3 ? '<span class="sym-star">★</span>' : '';
-            return '<a class="sym-tag ' + greenClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '" href="' + href + '" target="_blank" rel="noopener">'
+            return '<a class="sym-tag ' + greenClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '" data-name="' + s.name + '" data-isin="' + (s.isin||'') + '" data-sid="' + (s.id||'') + '" href="#">'
               + star + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></a>';
           }).join('')}
         </div>`;
@@ -1109,12 +1258,12 @@
       const newHtml = `
         <div class="sym-section-title"><span class="dot dot-red"></span>بین میانگین منفی و صفر</div>
         <div class="sym-list">
-          ${g.between.map((s, idx) => {
+          ${[...g.between].reverse().map((s, idx) => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
-            const href = s.isin ? 'https://tgbourse.com/symbol/' + encodeURIComponent(s.name) + '-' + s.isin : '#';
+            const href = buildHref(s);
             const star = idx < 3 ? '<span class="sym-star">★</span>' : '';
-            return '<a class="sym-tag ' + redClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '" href="' + href + '" target="_blank" rel="noopener">'
+            return '<a class="sym-tag ' + redClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '" data-name="' + s.name + '" data-isin="' + (s.isin||'') + '" data-sid="' + (s.id||'') + '" href="#">'
               + star + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></a>';
           }).join('')}
         </div>`;

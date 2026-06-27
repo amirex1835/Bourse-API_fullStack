@@ -190,12 +190,14 @@ def fetch_and_process():
             buy_queue_value = 0
 
         isin = s.get("isin", "") or ""
+        sym_id = s.get("id", "") or ""
 
         groups[group]["symbols_data"].append({
             "name": name,
             "plp": plp,
             "buy_queue_value": buy_queue_value,
             "isin": isin,
+            "id": sym_id,
         })
 
     results = []
