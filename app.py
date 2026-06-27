@@ -217,7 +217,7 @@ def fetch_and_process():
 
         # نمادهای بالای میانگین مثبت — سورت نزولی بر اساس درصد تغییر (تا رنگ‌های هم‌خانواده کنار هم بیفتن)
         above_avg_pos_all = sorted(
-            [s for s in positives if s["plp"] > avg_pos],
+            [s for s in positives if s["plp"] >= avg_pos],
             key=lambda x: x["plp"], reverse=True
         )
 
@@ -231,7 +231,7 @@ def fetch_and_process():
 
         # نمادهای بین میانگین منفی و صفر — سورت صعودی بر اساس درصد (منفی‌ترین اول، نزدیک‌به‌صفر آخر)
         between = sorted(
-            [s for s in syms if avg_neg < s["plp"] < 0],
+            [s for s in syms if avg_neg <= s["plp"] <= 0],
             key=lambda x: x["plp"]
         )
 

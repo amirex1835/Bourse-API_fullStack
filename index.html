@@ -132,6 +132,29 @@
     }
     @keyframes spinBtn { to { transform: rotate(360deg); } }
 
+    /* ─── SORT TOGGLE ─── */
+    #sort-toggle-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.8rem;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    #sort-toggle-btn:hover { background: var(--card-hover); }
+    #sort-toggle-btn.asc {
+      background: rgba(56,142,60,0.12);
+      border-color: var(--green-md);
+      color: var(--green-hi);
+    }
+
     /* ─── PAUSE / RESUME ─── */
     #pause-btn {
       background: var(--surface);
@@ -341,6 +364,45 @@
     /* همه فرزندان کارت داغ باید روی z-index بالاتر باشن */
     .card.hot-pos > *, .card.hot-neg > * { position: relative; z-index: 1; }
 
+    /* ─── MEDAL CARDS ─── */
+    .card.medal-gold {
+      border: 2px solid #c9970a;
+      box-shadow: 0 0 0 1px rgba(255,215,0,0.2), 0 6px 28px rgba(184,134,11,0.35);
+      background: linear-gradient(160deg, #231e08 0%, #1a1c12 50%, #161b22 100%);
+    }
+    .card.medal-gold .card-header {
+      background: linear-gradient(90deg, rgba(201,151,10,0.22) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(201,151,10,0.4);
+    }
+    .card.medal-silver {
+      border: 2px solid #8a9ba8;
+      box-shadow: 0 0 0 1px rgba(192,192,192,0.18), 0 6px 24px rgba(112,128,144,0.28);
+      background: linear-gradient(160deg, #141820 0%, #161b22 100%);
+    }
+    .card.medal-silver .card-header {
+      background: linear-gradient(90deg, rgba(138,155,168,0.2) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(138,155,168,0.4);
+    }
+    .card.medal-bronze {
+      border: 2px solid #a0633a;
+      box-shadow: 0 0 0 1px rgba(205,127,50,0.18), 0 6px 24px rgba(160,99,58,0.3);
+      background: linear-gradient(160deg, #1e1509 0%, #161b22 100%);
+    }
+    .card.medal-bronze .card-header {
+      background: linear-gradient(90deg, rgba(160,99,58,0.22) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(160,99,58,0.4);
+    }
+
+    /* ─── STAR BADGE ─── */
+    .sym-star {
+      font-size: 0.65rem;
+      vertical-align: super;
+      line-height: 1;
+      margin-left: 1px;
+      color: #FFD700;
+      text-shadow: 0 0 4px rgba(255,215,0,0.6);
+    }
+
     .card-header {
       padding: 14px 16px 10px;
       display: flex;
@@ -440,7 +502,7 @@
     .trend-chart-wrap {
       position: relative;
       width: 100%;
-      height: 46px;
+      height: 90px;
     }
     .trend-svg {
       width: 100%;
@@ -625,6 +687,11 @@
       <span id="countdown-text">—</span>
     </div>
 
+    <!-- دکمه سورت toggle -->
+    <button id="sort-toggle-btn" onclick="toggleSort()">
+      <span id="sort-icon">▼</span> <span id="sort-label">مثبت به منفی</span>
+    </button>
+
     <!-- دکمه پاز/ادامه -->
     <button id="pause-btn" onclick="togglePause()">
       <span class="pause-icon">⏸</span> <span id="pause-label">توقف</span>
@@ -638,6 +705,8 @@
 </header>
 
 <div id="summary-bar"></div>
+
+
 
 <!-- ۱۰. اسکلتون لودینگ -->
 <div id="skeleton-grid"></div>
@@ -659,12 +728,54 @@
   let hiddenGroups = new Set();
   let activeKeyIndex = 1;
   let isPaused = false;
+  let sortDir = 'desc'; // 'desc' = مثبت به منفی ، 'asc' = منفی به مثبت
 
   // ۳. نگه‌داری مقادیر قبلی برای count-up animation
   let prevGroupData = {};
 
   // ۲. نگه‌داری mq قبلی برای تشخیص تغییر بج سهام
   let prevSymbolValues = {};
+
+  function toggleSort() {
+    sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    const btn = document.getElementById('sort-toggle-btn');
+    const icon = document.getElementById('sort-icon');
+    const label = document.getElementById('sort-label');
+    if (sortDir === 'desc') {
+      icon.textContent = '▼';
+      label.textContent = 'مثبت به منفی';
+      btn.classList.remove('asc');
+    } else {
+      icon.textContent = '▲';
+      label.textContent = 'منفی به مثبت';
+      btn.classList.add('asc');
+    }
+    // گرید موجود رو دوباره مرتب کن بدون fetch
+    const grid = document.getElementById('grid');
+    const cards = Array.from(grid.querySelectorAll('.card[data-group]'));
+    cards.sort((a, b) => {
+      const av = parseFloat(a.dataset.avgTotal) || 0;
+      const bv = parseFloat(b.dataset.avgTotal) || 0;
+      return sortDir === 'desc' ? bv - av : av - bv;
+    });
+    cards.forEach(c => grid.appendChild(c));
+    applyMedals();
+  }
+
+  // برای سازگاری با کدهای قدیمی‌تر
+  function setSort(dir) { if (sortDir !== dir) toggleSort(); }
+
+  // اعمال کلاس مدال به ۳ کارت برتر بر اساس ترتیب فعلی
+  function applyMedals() {
+    const grid = document.getElementById('grid');
+    const visible = Array.from(grid.querySelectorAll('.card[data-group]:not(.hidden)'));
+    visible.forEach(c => {
+      c.classList.remove('medal-gold', 'medal-silver', 'medal-bronze');
+    });
+    ['medal-gold', 'medal-silver', 'medal-bronze'].forEach((cls, i) => {
+      if (visible[i]) visible[i].classList.add(cls);
+    });
+  }
 
   function fmt(v) {
     const sign = v > 0 ? '+' : '';
@@ -756,7 +867,7 @@
       return `<div class="trend-empty">برای رسم نمودار باید چند بار صفحه رفرش شود</div>`;
     }
 
-    const W = 600, H = 100, PAD_X = 4, PAD_Y = 10;
+    const W = 600, H = 180, PAD_X = 4, PAD_Y = 14;
     const values = history.map(p => p.v);
     let min = Math.min(...values, 0);
     let max = Math.max(...values, 0);
@@ -825,13 +936,14 @@
           بالای میانگین مثبت
         </div>
         <div class="sym-list">
-          ${g.above_avg_pos.map(s => {
+          ${g.above_avg_pos.map((s, idx) => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
             const href = s.isin ? `https://tgbourse.com/symbol/${encodeURIComponent(s.name)}-${s.isin}` : '#';
+            const star = idx < 3 ? '<span class="sym-star">★</span>' : '';
             return `<a class="sym-tag ${greenClass(s.plp)}${changed ? ' changed' : ''}"
                        data-sym-key="${key}" href="${href}" target="_blank" rel="noopener">
-              ${s.name}
+              ${star}${s.name}
               <span class="sym-pct">${fmt(s.plp)}</span>
             </a>`;
           }).join('')}
@@ -845,13 +957,14 @@
           بین میانگین منفی و صفر
         </div>
         <div class="sym-list">
-          ${g.between.map(s => {
+          ${g.between.map((s, idx) => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
             const href = s.isin ? `https://tgbourse.com/symbol/${encodeURIComponent(s.name)}-${s.isin}` : '#';
+            const star = idx < 3 ? '<span class="sym-star">★</span>' : '';
             return `<a class="sym-tag ${redClass(s.plp)}${changed ? ' changed' : ''}"
                        data-sym-key="${key}" href="${href}" target="_blank" rel="noopener">
-              ${s.name}
+              ${star}${s.name}
               <span class="sym-pct">${fmt(s.plp)}</span>
             </a>`;
           }).join('')}
@@ -968,12 +1081,13 @@
       const newHtml = `
         <div class="sym-section-title"><span class="dot dot-green"></span>بالای میانگین مثبت</div>
         <div class="sym-list">
-          ${g.above_avg_pos.map(s => {
+          ${g.above_avg_pos.map((s, idx) => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
             const href = s.isin ? 'https://tgbourse.com/symbol/' + encodeURIComponent(s.name) + '-' + s.isin : '#';
+            const star = idx < 3 ? '<span class="sym-star">★</span>' : '';
             return '<a class="sym-tag ' + greenClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '" href="' + href + '" target="_blank" rel="noopener">'
-              + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></a>';
+              + star + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></a>';
           }).join('')}
         </div>`;
       if (posSym) posSym.innerHTML = newHtml;
@@ -995,12 +1109,13 @@
       const newHtml = `
         <div class="sym-section-title"><span class="dot dot-red"></span>بین میانگین منفی و صفر</div>
         <div class="sym-list">
-          ${g.between.map(s => {
+          ${g.between.map((s, idx) => {
             const key = g.group + '|' + s.name;
             const changed = prevSymbolValues[key] !== undefined && prevSymbolValues[key] !== s.plp;
             const href = s.isin ? 'https://tgbourse.com/symbol/' + encodeURIComponent(s.name) + '-' + s.isin : '#';
+            const star = idx < 3 ? '<span class="sym-star">★</span>' : '';
             return '<a class="sym-tag ' + redClass(s.plp) + (changed ? ' changed' : '') + '" data-sym-key="' + key + '" href="' + href + '" target="_blank" rel="noopener">'
-              + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></a>';
+              + star + s.name + '<span class="sym-pct">' + fmt(s.plp) + '</span></a>';
           }).join('')}
         </div>`;
       if (negSym) negSym.innerHTML = newHtml;
@@ -1066,7 +1181,7 @@
         <div class="summary-chip">گروه‌ها: <strong>${data.groups.length}</strong></div>
       `;
 
-      data.groups.sort((a, b) => b.avg_pos - a.avg_pos);
+      data.groups.sort((a, b) => sortDir === 'desc' ? b.avg_total - a.avg_total : a.avg_total - b.avg_total);
 
       hideSkeleton();
       document.getElementById('error-msg').style.display = 'none';
@@ -1078,6 +1193,7 @@
         // اولین بار: رندر کامل
         grid.innerHTML = data.groups.map(renderCard).join('');
         runPostRenderAnimations(data.groups);
+        applyMedals();
       } else {
         // رفرش‌های بعدی: patch درجا
         const incomingGroups = new Map(data.groups.map(g => [g.group, g]));
@@ -1111,6 +1227,7 @@
         // انیمیشن ورود فقط برای کارت‌های جدید
         animateNewCards(newCardEls);
         saveCurrentValues(data.groups);
+        applyMedals();
       }
 
       flash('داده‌ها بروز شد');
