@@ -783,8 +783,8 @@
   <a class="popup-btn" id="popup-arshan" href="#" target="_blank" rel="noopener">
     <span class="pb-dot pb-arshan"></span> ارشن تکنیکال
   </a>
-  <a class="popup-btn" id="popup-tsetmc" href="#" target="_blank" rel="noopener">
-    <span class="pb-dot pb-tsetmc"></span> TSETMC
+  <a class="popup-btn" id="popup-tgbourse" href="#" target="_blank" rel="noopener">
+    <span class="pb-dot pb-tsetmc"></span> تحلیلگر بورس
   </a>
 </div>
 
@@ -825,9 +825,9 @@
     document.getElementById('popup-arshan').href =
       isin ? 'https://www.nahayatnegar.com/tv/' + isin : '#';
 
-    // لینک TSETMC
-    document.getElementById('popup-tsetmc').href =
-      sid ? 'https://old.tsetmc.com/Loader.aspx?ParTree=151311&i=' + sid : '#';
+    // لینک تحلیلگر بورس (tgbourse) — به فرمت: tgbourse.com/symbol/نام‌نماد-شناسه‌بین‌المللی
+    document.getElementById('popup-tgbourse').href =
+      isin ? 'https://tgbourse.com/symbol/' + encodeURIComponent(name) + '-' + isin : '#';
 
     // موقعیت پاپ‌آپ: بالای نماد کلیک‌شده
     // توجه: #sym-popup با position:fixed موقعیت‌دهی شده، یعنی مختصاتش نسبت به viewport
