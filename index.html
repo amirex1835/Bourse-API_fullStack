@@ -563,7 +563,8 @@
     .trend-chart-wrap {
       position: relative;
       width: 100%;
-      height: 90px;
+      height: 120px;
+      user-select: none;
     }
     .trend-svg {
       width: 100%;
@@ -576,6 +577,44 @@
       color: var(--muted);
       text-align: center;
       padding: 14px 0;
+    }
+
+    /* tooltip نمودار */
+    .chart-tooltip {
+      position: absolute;
+      pointer-events: none;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      z-index: 10;
+      transform: translate(-50%, -110%);
+    }
+    .chart-tooltip.visible { display: flex; }
+    .chart-tooltip-box {
+      background: #1c2128;
+      border: 1px solid #373e47;
+      border-radius: 7px;
+      padding: 5px 11px;
+      font-size: 0.72rem;
+      font-family: 'Vazirmatn', sans-serif;
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+    .chart-tooltip-time { color: #7d8590; font-size: 0.66rem; font-weight: 500; }
+    .chart-tooltip-val { font-weight: 700; font-size: 0.8rem; }
+    .chart-tooltip-val.pos  { color: #4caf50; }
+    .chart-tooltip-val.neg  { color: #f44336; }
+    .chart-tooltip-val.zero { color: #607d8b; }
+    .chart-tooltip-arrow {
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 5px solid #373e47;
     }
 
     /* ۴. انیمیشن رسم خط نمودار */
@@ -1006,46 +1045,249 @@
     });
   }
 
-  // ─── ۴. رسم تدریجی نمودار ───
+  // ─── ۴. رسم تدریجی نمودار با tooltip و رنگ‌بندی مثبت/منفی ───
+  let chartIdCounter = 0;
+
   function renderTrendChart(history) {
     if (!history || history.length < 2) {
       return `<div class="trend-empty">برای رسم نمودار باید چند بار صفحه رفرش شود</div>`;
     }
 
-    const W = 600, H = 180, PAD_X = 4, PAD_Y = 14;
+    const uid = 'ch' + (++chartIdCounter);
+    const W = 600, H = 210, PAD_L = 8, PAD_R = 8, PAD_Y = 14, PAD_BOTTOM = 38;
     const values = history.map(p => p.v);
-    let min = Math.min(...values, 0);
-    let max = Math.max(...values, 0);
-    if (min === max) { min -= 1; max += 1; }
+    const times  = history.map(p => p.t || '');
 
-    const range = max - min;
-    const innerW = W - PAD_X * 2;
-    const innerH = H - PAD_Y * 2;
-    const stepX = history.length > 1 ? innerW / (history.length - 1) : 0;
+    let minV = Math.min(...values, 0);
+    let maxV = Math.max(...values, 0);
+    if (minV === maxV) { minV -= 1; maxV += 1; }
 
-    const toY = v => PAD_Y + innerH - ((v - min) / range) * innerH;
-    const toX = i => PAD_X + i * stepX;
+    const range  = maxV - minV;
+    const innerW = W - PAD_L - PAD_R;
+    const innerH = H - PAD_Y - PAD_BOTTOM;
+    const n      = values.length;
+    const stepX  = n > 1 ? innerW / (n - 1) : 0;
 
-    const points = values.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
-    const zeroY = toY(0).toFixed(1);
-    const lastVal = values[values.length - 1];
-    const lineColor = lastVal > 0 ? 'var(--green-hi)' : (lastVal < 0 ? 'var(--red-hi)' : 'var(--zero)');
-    const areaPoints = `${toX(0).toFixed(1)},${zeroY} ${points} ${toX(values.length - 1).toFixed(1)},${zeroY}`;
-    const lastX = toX(values.length - 1).toFixed(1);
-    const lastY = toY(lastVal).toFixed(1);
+    const toY = v => PAD_Y + innerH - ((v - minV) / range) * innerH;
+    const toX = i => PAD_L + i * stepX;
+    const zeroY = toY(0);
 
-    // ۴. polyline با کلاس انیمیشن رسم
+    const pathD = values.map((v, i) =>
+      `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(v).toFixed(1)}`
+    ).join(' ');
+
+    const clipPosId = uid + '_cp';
+    const clipNegId = uid + '_cn';
+    const gradPosId = uid + '_gp';
+    const gradNegId = uid + '_gn';
+
+    // ── محور زمانی نیم‌ساعته ──
+    const timeLabels = [];
+    times.forEach((t, i) => {
+      if (!t) return;
+      const parts = t.split(':');
+      if (parts.length < 2) return;
+      const min = parseInt(parts[1], 10);
+      if (min === 0 || min === 30) {
+        const last = timeLabels[timeLabels.length - 1];
+        if (!last || last.label !== t) timeLabels.push({ x: toX(i), label: t });
+      }
+    });
+    if (timeLabels.length === 0 && times.length >= 2) {
+      timeLabels.push({ x: toX(0), label: times[0] });
+      timeLabels.push({ x: toX(n - 1), label: times[n - 1] });
+    }
+
+    // ── برچسب‌های محور Y (سمت چپ) ──
+    const gridLines = [];
+    const tickStep = range <= 4 ? 1 : range <= 10 ? 2 : 5;
+    const startTick = Math.ceil(minV / tickStep) * tickStep;
+    for (let v = startTick; v <= maxV + 0.001; v += tickStep) {
+      if (Math.abs(v) < 0.001) continue;
+      gridLines.push({ y: toY(v), label: (v > 0 ? '+' : '') + v.toFixed(0) + '%', pos: v > 0 });
+    }
+
+    const lastVal = values[n - 1];
+    const lastX   = toX(n - 1).toFixed(1);
+    const lastY   = toY(lastVal).toFixed(1);
+
+    const svgContent = `
+      <defs>
+        <linearGradient id="${gradPosId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#4caf50" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="#4caf50" stop-opacity="0.03"/>
+        </linearGradient>
+        <linearGradient id="${gradNegId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#f44336" stop-opacity="0.03"/>
+          <stop offset="100%" stop-color="#f44336" stop-opacity="0.4"/>
+        </linearGradient>
+        <clipPath id="${clipPosId}">
+          <rect x="${PAD_L}" y="${PAD_Y}" width="${innerW}" height="${Math.max(0, zeroY - PAD_Y)}"/>
+        </clipPath>
+        <clipPath id="${clipNegId}">
+          <rect x="${PAD_L}" y="${zeroY}" width="${innerW}" height="${Math.max(0, PAD_Y + innerH - zeroY)}"/>
+        </clipPath>
+      </defs>
+
+      <!-- خطوط شبکه بدون برچسب -->
+      ${gridLines.map(g => `
+        <line x1="${PAD_L}" y1="${g.y.toFixed(1)}" x2="${W - PAD_R}" y2="${g.y.toFixed(1)}"
+              stroke="#21262d" stroke-width="1" stroke-dasharray="3,5"/>
+      `).join('')}
+
+      <!-- خط صفر -->
+      <line x1="${PAD_L}" y1="${zeroY.toFixed(1)}" x2="${W - PAD_R}" y2="${zeroY.toFixed(1)}"
+            stroke="#4b5563" stroke-width="1.2" stroke-dasharray="5,4"/>
+
+      <!-- ناحیه مثبت -->
+      <path d="${pathD} L${toX(n-1).toFixed(1)},${zeroY.toFixed(1)} L${toX(0).toFixed(1)},${zeroY.toFixed(1)} Z"
+            fill="url(#${gradPosId})" clip-path="url(#${clipPosId})" stroke="none"/>
+
+      <!-- ناحیه منفی -->
+      <path d="${pathD} L${toX(n-1).toFixed(1)},${zeroY.toFixed(1)} L${toX(0).toFixed(1)},${zeroY.toFixed(1)} Z"
+            fill="url(#${gradNegId})" clip-path="url(#${clipNegId})" stroke="none"/>
+
+      <!-- خط مثبت سبز -->
+      <path class="trend-line-anim" d="${pathD}" fill="none"
+            stroke="#4caf50" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"
+            clip-path="url(#${clipPosId})"/>
+
+      <!-- خط منفی قرمز -->
+      <path class="trend-line-anim" d="${pathD}" fill="none"
+            stroke="#f44336" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"
+            clip-path="url(#${clipNegId})"/>
+
+      <!-- نقطه آخر -->
+      <circle cx="${lastX}" cy="${lastY}" r="3.5"
+              fill="${lastVal > 0 ? '#4caf50' : lastVal < 0 ? '#f44336' : '#607d8b'}"
+              stroke="#0d1117" stroke-width="1.5"/>
+
+      <!-- محور زمانی -->
+      ${timeLabels.map(tl => `
+        <line x1="${tl.x.toFixed(1)}" y1="${(PAD_Y + innerH).toFixed(1)}"
+              x2="${tl.x.toFixed(1)}" y2="${(PAD_Y + innerH + 6).toFixed(1)}"
+              stroke="#4b5563" stroke-width="1.5"/>
+        <text x="${tl.x.toFixed(1)}" y="${(H - 5).toFixed(1)}" text-anchor="middle"
+              font-size="20" fill="#d1d5db" font-family="Vazirmatn,sans-serif" font-weight="700">${tl.label}</text>
+      `).join('')}
+
+      <!-- خط عمودی hover -->
+      <line id="${uid}_vline" x1="0" y1="${PAD_Y}" x2="0" y2="${(PAD_Y + innerH).toFixed(1)}"
+            stroke="#6b7280" stroke-width="1" stroke-dasharray="3,3" display="none" pointer-events="none"/>
+
+      <!-- دایره hover -->
+      <circle id="${uid}_dot" cx="0" cy="0" r="5"
+              fill="#fff" stroke="#0d1117" stroke-width="2" display="none" pointer-events="none"/>
+    `;
+
+    // داده‌ها رو به‌صورت JSON در data attribute ذخیره می‌کنیم — بدون inline event handler
+    const valuesJson = JSON.stringify(values);
+    const timesJson  = JSON.stringify(times);
+
     return `
-      <div class="trend-chart-wrap">
-        <svg class="trend-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-          <line x1="${PAD_X}" y1="${zeroY}" x2="${W - PAD_X}" y2="${zeroY}"
-                stroke="var(--border)" stroke-width="1.5" stroke-dasharray="4,4" />
-          <polygon points="${areaPoints}" fill="${lineColor}" opacity="0.12" stroke="none" />
-          <polyline class="trend-line-anim" points="${points}" fill="none" stroke="${lineColor}" stroke-width="2.5"
-                     stroke-linejoin="round" stroke-linecap="round" />
-          <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="${lineColor}" />
+      <div class="trend-chart-wrap" id="${uid}_wrap"
+           data-uid="${uid}"
+           data-values='${valuesJson}'
+           data-times='${timesJson}'
+           data-padl="${PAD_L}" data-innerw="${innerW}"
+           data-pady="${PAD_Y}" data-innerh="${innerH}"
+           data-minv="${minV}" data-maxv="${maxV}" data-vbw="${W}" data-vbh="${H}">
+        <svg class="trend-svg" id="${uid}_svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+          ${svgContent}
         </svg>
+        <div class="chart-tooltip" id="${uid}_tip">
+          <div class="chart-tooltip-box">
+            <span class="chart-tooltip-time" id="${uid}_tip_time">—</span>
+            <span class="chart-tooltip-val"  id="${uid}_tip_val">—</span>
+          </div>
+          <div class="chart-tooltip-arrow"></div>
+        </div>
       </div>`;
+  }
+
+  document.addEventListener('mousemove', function(e) {
+    const wrap = e.target.closest('.trend-chart-wrap[data-uid]');
+    if (!wrap) {
+      // اگه موس از همه wrap ها خارج شد همه tooltip ها رو ببند
+      return;
+    }
+    const uid    = wrap.dataset.uid;
+    const svg    = document.getElementById(uid + '_svg');
+    if (!svg) return;
+
+    const values = JSON.parse(wrap.dataset.values);
+    const times  = JSON.parse(wrap.dataset.times);
+    const padL   = +wrap.dataset.padl;
+    const innerW = +wrap.dataset.innerw;
+    const padY   = +wrap.dataset.pady;
+    const innerH = +wrap.dataset.innerh;
+    const minV   = +wrap.dataset.minv;
+    const maxV   = +wrap.dataset.maxv;
+    const vbW    = +wrap.dataset.vbw;
+    const vbH    = +wrap.dataset.vbh;
+
+    const rect   = svg.getBoundingClientRect();
+    const scaleX = vbW / rect.width;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+
+    const n      = values.length;
+    const stepX  = n > 1 ? innerW / (n - 1) : 1;
+    let idx = Math.round((mouseX - padL) / stepX);
+    idx = Math.max(0, Math.min(n - 1, idx));
+
+    const v    = values[idx];
+    const t    = times[idx] || '';
+    const range = maxV - minV;
+    const dotX = padL + idx * stepX;
+    const dotY = padY + innerH - ((v - minV) / range) * innerH;
+
+    const vline = document.getElementById(uid + '_vline');
+    const dot   = document.getElementById(uid + '_dot');
+    if (vline) {
+      vline.setAttribute('x1', dotX); vline.setAttribute('x2', dotX);
+      vline.setAttribute('display', '');
+    }
+    if (dot) {
+      dot.setAttribute('cx', dotX); dot.setAttribute('cy', dotY);
+      dot.setAttribute('fill', v > 0 ? '#4caf50' : v < 0 ? '#f44336' : '#607d8b');
+      dot.setAttribute('display', '');
+    }
+
+    const tip  = document.getElementById(uid + '_tip');
+    const tipT = document.getElementById(uid + '_tip_time');
+    const tipV = document.getElementById(uid + '_tip_val');
+    if (!tip || !tipT || !tipV) return;
+
+    tipT.textContent = t;
+    tipV.textContent = (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+    tipV.className   = 'chart-tooltip-val ' + (v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero');
+    tip.classList.add('visible');
+
+    const wrapRect = wrap.getBoundingClientRect();
+    const scaleY   = vbH / rect.height;
+    const tipLeftPx = dotX / scaleX;
+    const tipTopPx  = dotY / scaleY;
+
+    tip.style.left = Math.min(Math.max(tipLeftPx, 40), wrapRect.width - 40) + 'px';
+    tip.style.top  = Math.max(tipTopPx, 36) + 'px';
+  });
+
+  // mouseleave روی هر wrap به‌صورت event delegation با capture
+  document.addEventListener('mouseout', function(e) {
+    const wrap = e.target.closest('.trend-chart-wrap[data-uid]');
+    if (!wrap) return;
+    // اگه موس به داخل فرزند رفته، نه خارج از wrap
+    if (wrap.contains(e.relatedTarget)) return;
+    chartHideTooltip(wrap.dataset.uid);
+  });
+
+  function chartHideTooltip(uid) {
+    const tip   = document.getElementById(uid + '_tip');
+    const vline = document.getElementById(uid + '_vline');
+    const dot   = document.getElementById(uid + '_dot');
+    if (tip)   tip.classList.remove('visible');
+    if (vline) vline.setAttribute('display', 'none');
+    if (dot)   dot.setAttribute('display', 'none');
   }
 
   function renderCard(g) {
@@ -1363,6 +1605,8 @@
           if (existingCards.has(g.group)) {
             // موجود → patch
             patchCard(existingCards.get(g.group), g);
+            // آپدیت data-avg-total روی کارت تا toggleSort هم مقدار تازه داشته باشه
+            existingCards.get(g.group).dataset.avgTotal = g.avg_total;
           } else {
             // جدید → اضافه کن
             const tmp = document.createElement('div');
@@ -1372,6 +1616,15 @@
             newCardEls.push(newCard);
           }
         });
+
+        // ─── مرتب‌سازی مجدد کارت‌ها در DOM بر اساس avg_total جدید ───
+        const allCards = Array.from(grid.querySelectorAll('.card[data-group]'));
+        allCards.sort((a, b) => {
+          const av = parseFloat(a.dataset.avgTotal) || 0;
+          const bv = parseFloat(b.dataset.avgTotal) || 0;
+          return sortDir === 'desc' ? bv - av : av - bv;
+        });
+        allCards.forEach(c => grid.appendChild(c));
 
         // انیمیشن ورود فقط برای کارت‌های جدید
         animateNewCards(newCardEls);
@@ -1425,7 +1678,11 @@
       countdownVal--;
       document.getElementById('countdown-text').textContent = `${countdownVal}s`;
       updateRing(countdownVal, REFRESH_SEC);
-      if (countdownVal <= 0) loadData();
+      if (countdownVal <= 0) {
+        clearInterval(timer);
+        timer = null;
+        loadData();
+      }
     }, 1000);
   }
 
