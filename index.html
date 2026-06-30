@@ -579,8 +579,8 @@
       padding: 14px 0;
     }
 
-    /* tooltip نمودار */
-    .chart-tooltip {
+    /* tooltip نمودار (هر دو نوع) */
+    .chart-tooltip, .mov-tooltip {
       position: absolute;
       pointer-events: none;
       display: none;
@@ -590,8 +590,8 @@
       z-index: 10;
       transform: translate(-50%, -110%);
     }
-    .chart-tooltip.visible { display: flex; }
-    .chart-tooltip-box {
+    .chart-tooltip.visible, .mov-tooltip.visible { display: flex; }
+    .chart-tooltip-box, .mov-tooltip-box {
       background: #1c2128;
       border: 1px solid #373e47;
       border-radius: 7px;
@@ -605,12 +605,12 @@
       align-items: center;
       gap: 1px;
     }
-    .chart-tooltip-time { color: #7d8590; font-size: 0.66rem; font-weight: 500; }
-    .chart-tooltip-val { font-weight: 700; font-size: 0.8rem; }
-    .chart-tooltip-val.pos  { color: #4caf50; }
-    .chart-tooltip-val.neg  { color: #f44336; }
-    .chart-tooltip-val.zero { color: #607d8b; }
-    .chart-tooltip-arrow {
+    .chart-tooltip-time, .mov-tooltip-time { color: #7d8590; font-size: 0.66rem; font-weight: 500; }
+    .chart-tooltip-val, .mov-tooltip-val { font-weight: 700; font-size: 0.8rem; }
+    .chart-tooltip-val.pos,  .mov-tooltip-val.pos  { color: #4caf50; }
+    .chart-tooltip-val.neg,  .mov-tooltip-val.neg  { color: #f44336; }
+    .chart-tooltip-val.zero, .mov-tooltip-val.zero { color: #607d8b; }
+    .chart-tooltip-arrow, .mov-tooltip-arrow {
       width: 0; height: 0;
       border-left: 5px solid transparent;
       border-right: 5px solid transparent;
@@ -696,6 +696,81 @@
     .sym-tag.changed {
       animation: tagPulse 0.7s ease;
     }
+
+    /* ─── MARKET OVERVIEW ─── */
+    #market-overview {
+      margin: 0 auto 22px;
+      max-width: 640px;
+      width: calc(100% - 56px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: none;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+    }
+    #market-overview.visible { display: block; }
+
+    .mov-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .mov-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mov-title-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green-hi);
+      box-shadow: 0 0 6px rgba(76,175,80,0.7);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { transform: scale(1); opacity: 1; }
+      50%      { transform: scale(1.4); opacity: 0.7; }
+    }
+    .mov-stats {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .mov-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+    }
+    .mov-stat-label { font-size: 0.65rem; color: var(--muted); }
+    .mov-stat-val   { font-size: 0.98rem; font-weight: 900; }
+    .mov-stat-val.pos  { color: var(--green-hi); }
+    .mov-stat-val.neg  { color: var(--red-hi); }
+    .mov-stat-val.zero { color: var(--zero); }
+
+    .mov-chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      padding: 8px 16px 12px;
+      user-select: none;
+    }
+    .mov-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible;
+    }
+
 
     /* ─── SKELETON LOADING (۱۰) ─── */
     #skeleton-grid {
@@ -806,6 +881,45 @@
 
 <div id="summary-bar"></div>
 
+<!-- ─── نمودار کلی بازار ─── -->
+<div id="market-overview">
+  <div class="mov-header">
+    <div class="mov-title">
+      <span class="mov-title-dot"></span>
+      میانگین کل بازار (میانگین همه گروه‌ها)
+    </div>
+    <div class="mov-stats">
+      <div class="mov-stat">
+        <span class="mov-stat-label">آخرین مقدار</span>
+        <span class="mov-stat-val" id="mov-last-val">—</span>
+      </div>
+      <div class="mov-stat">
+        <span class="mov-stat-label">بالاترین امروز</span>
+        <span class="mov-stat-val pos" id="mov-high-val">—</span>
+      </div>
+      <div class="mov-stat">
+        <span class="mov-stat-label">پایین‌ترین امروز</span>
+        <span class="mov-stat-val neg" id="mov-low-val">—</span>
+      </div>
+      <div class="mov-stat">
+        <span class="mov-stat-label">تعداد نقاط</span>
+        <span class="mov-stat-val zero" id="mov-points-val">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="mov-chart-wrap" id="mov_wrap" data-uid="mov">
+    <svg class="mov-svg" id="mov_svg" viewBox="0 0 600 210" preserveAspectRatio="none">
+    </svg>
+    <div class="mov-tooltip" id="mov_tip">
+      <div class="mov-tooltip-box">
+        <span class="mov-tooltip-time" id="mov_tip_time">—</span>
+        <span class="mov-tooltip-val"  id="mov_tip_val">—</span>
+      </div>
+      <div class="mov-tooltip-arrow"></div>
+    </div>
+  </div>
+</div>
+
 
 
 <!-- ۱۰. اسکلتون لودینگ -->
@@ -836,9 +950,161 @@
   let REFRESH_SEC = parseInt(localStorage.getItem('refreshIntervalSec'), 10) || DEFAULT_REFRESH_SEC;
   let countdownVal = REFRESH_SEC;
   let timer;
+  // ★ FIX: به‌جای تکیه بر شمارش تیک‌های setInterval (که مرورگر در تب‌های پس‌زمینه
+  // throttle/متوقف می‌کنه)، یک timestamp واقعیِ «لحظه‌ی رفرش بعدی» نگه می‌داریم.
+  // هر بار تایمر اجرا بشه (هرچقدرم دیر)، با Date.now() واقعی مقایسه می‌شه، پس
+  // حتی اگه تب چند دقیقه پس‌زمینه بوده باشه، به محض اجرای بعدیِ تایمر (یا با
+  // برگشت کاربر به تب از طریق visibilitychange) رفرش انجام می‌شه.
+  let nextRefreshAt = null;
   let hiddenGroups = new Set();
   let activeKeyIndex = 1;
   let isPaused = false;
+
+  function renderMarketOverview(history) {
+    if (!history || history.length === 0) return;
+
+    const overview = document.getElementById('market-overview');
+    overview.classList.add('visible');
+
+    // آمارها
+    const lastV = history[history.length - 1].v;
+    const allV  = history.map(p => p.v);
+    const highV = Math.max(...allV);
+    const lowV  = Math.min(...allV);
+
+    const lastEl = document.getElementById('mov-last-val');
+    lastEl.textContent = (lastV > 0 ? '+' : '') + lastV.toFixed(2) + '%';
+    lastEl.className = 'mov-stat-val ' + (lastV > 0 ? 'pos' : lastV < 0 ? 'neg' : 'zero');
+    document.getElementById('mov-high-val').textContent = '+' + highV.toFixed(2) + '%';
+    document.getElementById('mov-low-val').textContent  = lowV.toFixed(2) + '%';
+    document.getElementById('mov-points-val').textContent = history.length;
+
+    // ابعاد نمودار هم‌اندازه‌ی نمودارهای کوچک گروه‌ها (600x210) — اما کشیده روی یک
+    // کانتینر باریک‌تر و وسط‌چین، تا نوسانات واضح‌تر دیده بشن
+    const W = 600, H = 210, PAD_L = 8, PAD_R = 8, PAD_Y = 14, PAD_BOTTOM = 38;
+    const values = history.map(p => p.v);
+    const times  = history.map(p => p.t);
+    const n = values.length;
+
+    let minV = Math.min(...values, 0);
+    let maxV = Math.max(...values, 0);
+    if (minV === maxV) { minV -= 0.5; maxV += 0.5; }
+
+    const range  = maxV - minV;
+    const innerW = W - PAD_L - PAD_R;
+    const innerH = H - PAD_Y - PAD_BOTTOM;
+    const stepX  = n > 1 ? innerW / (n - 1) : 0;
+
+    // همیشه data attributes رو ست کن تا hover کار کنه
+    const wrap = document.getElementById('mov_wrap');
+    wrap.dataset.values  = JSON.stringify(values);
+    wrap.dataset.times   = JSON.stringify(times);
+    wrap.dataset.padl    = PAD_L;
+    wrap.dataset.innerw  = innerW;
+    wrap.dataset.pady    = PAD_Y;
+    wrap.dataset.innerh  = innerH;
+    wrap.dataset.minv    = minV;
+    wrap.dataset.maxv    = maxV;
+    wrap.dataset.vbw     = W;
+    wrap.dataset.vbh     = H;
+
+    if (history.length < 2) return;
+
+    const toY = v => PAD_Y + innerH - ((v - minV) / range) * innerH;
+    const toX = i => PAD_L + i * stepX;
+    const zeroY = toY(0);
+
+    const pathD = values.map((v, i) =>
+      `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(v).toFixed(1)}`
+    ).join(' ');
+
+    // محور زمانی نیم‌ساعته
+    const timeLabels = [];
+    times.forEach((t, i) => {
+      if (!t) return;
+      const min = parseInt((t.split(':')[1] || '0'), 10);
+      if (min === 0 || min === 30) {
+        const last = timeLabels[timeLabels.length - 1];
+        if (!last || last.label !== t) timeLabels.push({ x: toX(i), label: t });
+      }
+    });
+    if (timeLabels.length === 0) {
+      timeLabels.push({ x: toX(0), label: times[0] });
+      if (n > 1) timeLabels.push({ x: toX(n - 1), label: times[n - 1] });
+    }
+
+    const uid = 'mov';
+    const clipPosId = uid + '_cp';
+    const clipNegId = uid + '_cn';
+    const gradPosId = uid + '_gp';
+    const gradNegId = uid + '_gn';
+
+    const svgContent = `
+      <defs>
+        <linearGradient id="${gradPosId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#4caf50" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="#4caf50" stop-opacity="0.03"/>
+        </linearGradient>
+        <linearGradient id="${gradNegId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#f44336" stop-opacity="0.03"/>
+          <stop offset="100%" stop-color="#f44336" stop-opacity="0.5"/>
+        </linearGradient>
+        <clipPath id="${clipPosId}">
+          <rect x="${PAD_L}" y="${PAD_Y}" width="${innerW}" height="${Math.max(0, zeroY - PAD_Y)}"/>
+        </clipPath>
+        <clipPath id="${clipNegId}">
+          <rect x="${PAD_L}" y="${zeroY}" width="${innerW}" height="${Math.max(0, PAD_Y + innerH - zeroY)}"/>
+        </clipPath>
+      </defs>
+
+      <!-- خط صفر -->
+      <line x1="${PAD_L}" y1="${zeroY.toFixed(1)}" x2="${W - PAD_R}" y2="${zeroY.toFixed(1)}"
+            stroke="#4b5563" stroke-width="1.2" stroke-dasharray="5,4"/>
+
+      <!-- ناحیه مثبت -->
+      <path d="${pathD} L${toX(n-1).toFixed(1)},${zeroY.toFixed(1)} L${toX(0).toFixed(1)},${zeroY.toFixed(1)} Z"
+            fill="url(#${gradPosId})" clip-path="url(#${clipPosId})" stroke="none"/>
+
+      <!-- ناحیه منفی -->
+      <path d="${pathD} L${toX(n-1).toFixed(1)},${zeroY.toFixed(1)} L${toX(0).toFixed(1)},${zeroY.toFixed(1)} Z"
+            fill="url(#${gradNegId})" clip-path="url(#${clipNegId})" stroke="none"/>
+
+      <!-- خط مثبت -->
+      <path class="trend-line-anim" d="${pathD}" fill="none" stroke="#4caf50" stroke-width="2.3"
+            stroke-linejoin="round" stroke-linecap="round"
+            clip-path="url(#${clipPosId})"/>
+
+      <!-- خط منفی -->
+      <path class="trend-line-anim" d="${pathD}" fill="none" stroke="#f44336" stroke-width="2.3"
+            stroke-linejoin="round" stroke-linecap="round"
+            clip-path="url(#${clipNegId})"/>
+
+      <!-- نقطه آخر با هاله -->
+      <circle cx="${toX(n-1).toFixed(1)}" cy="${toY(lastV).toFixed(1)}" r="6"
+              fill="${lastV >= 0 ? '#4caf50' : '#f44336'}" opacity="0.2"/>
+      <circle cx="${toX(n-1).toFixed(1)}" cy="${toY(lastV).toFixed(1)}" r="3.5"
+              fill="${lastV >= 0 ? '#4caf50' : '#f44336'}" stroke="#0d1117" stroke-width="1.5"/>
+
+      <!-- محور زمانی -->
+      ${timeLabels.map(tl => `
+        <line x1="${tl.x.toFixed(1)}" y1="${(PAD_Y + innerH).toFixed(1)}"
+              x2="${tl.x.toFixed(1)}" y2="${(PAD_Y + innerH + 5).toFixed(1)}"
+              stroke="#4b5563" stroke-width="1"/>
+        <text x="${tl.x.toFixed(1)}" y="${(H - 5).toFixed(1)}" text-anchor="middle"
+              font-size="11" fill="#6b7280" font-family="Vazirmatn,sans-serif" font-weight="600">${tl.label}</text>
+      `).join('')}
+
+      <!-- hover vline -->
+      <line id="${uid}_vline" x1="0" y1="${PAD_Y}" x2="0" y2="${(PAD_Y + innerH).toFixed(1)}"
+            stroke="#6b7280" stroke-width="1" stroke-dasharray="3,3" display="none" pointer-events="none"/>
+      <!-- hover dot -->
+      <circle id="${uid}_dot" cx="0" cy="0" r="5"
+              fill="#fff" stroke="#0d1117" stroke-width="2" display="none" pointer-events="none"/>
+    `;
+
+    const svg = document.getElementById('mov_svg');
+    svg.innerHTML = svgContent;
+  }
 
   // ─── پاپ‌آپ انتخاب سایت نماد ───
   let popupOpen = false;
@@ -1165,10 +1431,10 @@
       <!-- محور زمانی -->
       ${timeLabels.map(tl => `
         <line x1="${tl.x.toFixed(1)}" y1="${(PAD_Y + innerH).toFixed(1)}"
-              x2="${tl.x.toFixed(1)}" y2="${(PAD_Y + innerH + 6).toFixed(1)}"
-              stroke="#4b5563" stroke-width="1.5"/>
+              x2="${tl.x.toFixed(1)}" y2="${(PAD_Y + innerH + 5).toFixed(1)}"
+              stroke="#4b5563" stroke-width="1"/>
         <text x="${tl.x.toFixed(1)}" y="${(H - 5).toFixed(1)}" text-anchor="middle"
-              font-size="20" fill="#d1d5db" font-family="Vazirmatn,sans-serif" font-weight="700">${tl.label}</text>
+              font-size="11" fill="#6b7280" font-family="Vazirmatn,sans-serif" font-weight="600">${tl.label}</text>
       `).join('')}
 
       <!-- خط عمودی hover -->
@@ -1206,17 +1472,16 @@
   }
 
   document.addEventListener('mousemove', function(e) {
-    const wrap = e.target.closest('.trend-chart-wrap[data-uid]');
-    if (!wrap) {
-      // اگه موس از همه wrap ها خارج شد همه tooltip ها رو ببند
-      return;
-    }
+    const wrap = e.target.closest('.trend-chart-wrap[data-uid], .mov-chart-wrap[data-uid]');
+    if (!wrap) return;
     const uid    = wrap.dataset.uid;
     const svg    = document.getElementById(uid + '_svg');
     if (!svg) return;
 
-    const values = JSON.parse(wrap.dataset.values);
-    const times  = JSON.parse(wrap.dataset.times);
+    const values = JSON.parse(wrap.dataset.values || '[]');
+    const times  = JSON.parse(wrap.dataset.times  || '[]');
+    if (!values.length) return;
+
     const padL   = +wrap.dataset.padl;
     const innerW = +wrap.dataset.innerw;
     const padY   = +wrap.dataset.pady;
@@ -1237,21 +1502,14 @@
 
     const v    = values[idx];
     const t    = times[idx] || '';
-    const range = maxV - minV;
+    const range = maxV - minV || 1;
     const dotX = padL + idx * stepX;
     const dotY = padY + innerH - ((v - minV) / range) * innerH;
 
     const vline = document.getElementById(uid + '_vline');
     const dot   = document.getElementById(uid + '_dot');
-    if (vline) {
-      vline.setAttribute('x1', dotX); vline.setAttribute('x2', dotX);
-      vline.setAttribute('display', '');
-    }
-    if (dot) {
-      dot.setAttribute('cx', dotX); dot.setAttribute('cy', dotY);
-      dot.setAttribute('fill', v > 0 ? '#4caf50' : v < 0 ? '#f44336' : '#607d8b');
-      dot.setAttribute('display', '');
-    }
+    if (vline) { vline.setAttribute('x1', dotX); vline.setAttribute('x2', dotX); vline.setAttribute('display', ''); }
+    if (dot)   { dot.setAttribute('cx', dotX); dot.setAttribute('cy', dotY); dot.setAttribute('fill', v > 0 ? '#4caf50' : v < 0 ? '#f44336' : '#607d8b'); dot.setAttribute('display', ''); }
 
     const tip  = document.getElementById(uid + '_tip');
     const tipT = document.getElementById(uid + '_tip_time');
@@ -1260,7 +1518,9 @@
 
     tipT.textContent = t;
     tipV.textContent = (v > 0 ? '+' : '') + v.toFixed(2) + '%';
-    tipV.className   = 'chart-tooltip-val ' + (v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero');
+    // کلاس tooltip — سازگار با هر دو نوع نمودار
+    const valClass = v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero';
+    tipV.className = (uid === 'mov' ? 'mov-tooltip-val ' : 'chart-tooltip-val ') + valClass;
     tip.classList.add('visible');
 
     const wrapRect = wrap.getBoundingClientRect();
@@ -1272,11 +1532,9 @@
     tip.style.top  = Math.max(tipTopPx, 36) + 'px';
   });
 
-  // mouseleave روی هر wrap به‌صورت event delegation با capture
   document.addEventListener('mouseout', function(e) {
-    const wrap = e.target.closest('.trend-chart-wrap[data-uid]');
+    const wrap = e.target.closest('.trend-chart-wrap[data-uid], .mov-chart-wrap[data-uid]');
     if (!wrap) return;
-    // اگه موس به داخل فرزند رفته، نه خارج از wrap
     if (wrap.contains(e.relatedTarget)) return;
     chartHideTooltip(wrap.dataset.uid);
   });
@@ -1574,6 +1832,9 @@
 
       data.groups.sort((a, b) => sortDir === 'desc' ? b.avg_total - a.avg_total : a.avg_total - b.avg_total);
 
+      // نمودار کلی بازار
+      renderMarketOverview(data.market_overview);
+
       hideSkeleton();
       document.getElementById('error-msg').style.display = 'none';
       grid.style.display = 'grid';
@@ -1666,25 +1927,58 @@
     else                fill.style.stroke = 'var(--red-hi)';
   }
 
+  // ★ FIX: شروع شمارش معکوس بر اساس یک timestamp واقعی (نه شمارش تیک).
+  // وقتی تب پس‌زمینه باشه و setInterval توسط مرورگر throttle بشه، با هر بار
+  // اجرای واقعی این تابع (هرچقدرم دیرتر از موعد)، با مقایسه‌ی Date.now() با
+  // nextRefreshAt، رفرش به‌موقع/با تأخیر کوتاه اجرا می‌شه — به‌جای اینکه اصلاً
+  // هیچ‌وقت اجرا نشه (که مشکل اصلی نسخه‌ی قبلی بود).
   function startCountdown() {
     clearInterval(timer);
     if (isPaused) return;
-    countdownVal = REFRESH_SEC;
-    document.getElementById('countdown-text').textContent = `${countdownVal}s`;
-    updateRing(countdownVal, REFRESH_SEC);
 
-    timer = setInterval(() => {
-      if (isPaused) return;
-      countdownVal--;
-      document.getElementById('countdown-text').textContent = `${countdownVal}s`;
-      updateRing(countdownVal, REFRESH_SEC);
-      if (countdownVal <= 0) {
-        clearInterval(timer);
-        timer = null;
-        loadData();
-      }
-    }, 1000);
+    nextRefreshAt = Date.now() + REFRESH_SEC * 1000;
+    tickCountdown();
+
+    timer = setInterval(tickCountdown, 1000);
   }
+
+  function tickCountdown() {
+    if (isPaused || nextRefreshAt === null) return;
+
+    const remainingMs  = nextRefreshAt - Date.now();
+    const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+
+    document.getElementById('countdown-text').textContent = `${remainingSec}s`;
+    updateRing(remainingSec, REFRESH_SEC);
+
+    if (remainingMs <= 0) {
+      clearInterval(timer);
+      timer = null;
+      nextRefreshAt = null;
+      loadData();
+    }
+  }
+
+  // ★ FIX: جبران توقف تایمر در پس‌زمینه.
+  // وقتی کاربر بعد از مدتی غیبت (سوییچ تب، minimize، قفل صفحه و ...) دوباره به این
+  // تب برمی‌گرده، رویداد visibilitychange فایر می‌شه. اینجا چک می‌کنیم اگه از
+  // لحظه‌ی موعدِ رفرش گذشته (که در پس‌زمینه به‌خاطر throttle شدن setInterval ممکنه
+  // اجرا نشده باشه)، بلافاصله و بدون تأخیر یک loadData() صدا می‌زنیم تا داده‌ها
+  // فوراً به‌روز بشن؛ در غیر این صورت فقط نمایش رینگ/متن رو با وضعیت واقعی sync می‌کنیم.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (isPaused) return;
+    if (nextRefreshAt === null) return;
+
+    if (Date.now() >= nextRefreshAt) {
+      clearInterval(timer);
+      timer = null;
+      nextRefreshAt = null;
+      loadData();
+    } else {
+      tickCountdown();
+    }
+  });
 
   // ─── توقف / ادامه ───
   function togglePause() {

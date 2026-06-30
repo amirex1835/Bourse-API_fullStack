@@ -26,6 +26,9 @@ HTML_PATH = r'C:\Users\AMIR\Desktop\Bourse-API_fullStack\index.html'
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "group_history.json")
 MAX_HISTORY_POINTS = 100  # حداکثر تعداد نقاطی که برای هر گروه نگه‌داری می‌شود
 
+# کلید مخصوص داخل همون فایل تاریخچه که میانگینِ کلِ کل بازار (میانگین میانگین‌های گروه‌ها) زیرش ذخیره می‌شه
+MARKET_OVERVIEW_KEY = "__market_overview__"
+
 # فایل ذخیره‌ی توکن فعال، تا بعد از ری‌استارت سرور هم انتخابت یادش بماند
 ACTIVE_KEY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "active_key.json")
 
@@ -252,12 +255,24 @@ def fetch_and_process():
 
     # ذخیره‌ی نقطه‌ی جدید میانگین کل هر گروه در فایل تاریخچه (برای رسم نمودار)
     group_averages = {r["group"]: r["avg_total"] for r in results}
+
+    # میانگینِ میانگین‌کل همه‌ی گروه‌ها (همون چیزی که نمودار بالای صفحه نشون می‌ده)
+    # این مقدار رو هم مثل تاریخچه‌ی هر گروه، زیر یک کلید مخصوص در همون فایل تاریخچه
+    # ذخیره می‌کنیم تا با رفرش صفحه یا ری‌استارت سرور از بین نره
+    overall_avg = round(sum(group_averages.values()) / len(group_averages), 3) if group_averages else 0.0
+    group_averages[MARKET_OVERVIEW_KEY] = overall_avg
+
     history = update_history(group_averages)
     for r in results:
         r["history"] = history.get(r["group"], [])
 
     results.sort(key=lambda x: x["count"], reverse=True)
-    return {"groups": results, "total": total, "skipped": skipped}, None
+    return {
+        "groups": results,
+        "total": total,
+        "skipped": skipped,
+        "market_overview": history.get(MARKET_OVERVIEW_KEY, []),
+    }, None
 
 
 @app.route("/")
